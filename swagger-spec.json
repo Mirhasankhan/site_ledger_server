@@ -1,30 +1,35 @@
 {
   "openapi": "3.0.0",
   "paths": {
-    "/auth/register": {
+    "/auth/accept-invite": {
       "post": {
-        "operationId": "AuthController_register",
+        "operationId": "AuthController_acceptInvite",
         "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RegisterUserDto"
+                "$ref": "#/components/schemas/AcceptInviteDto"
               }
             }
           }
         },
         "responses": {},
-        "summary": "Register User",
+        "summary": "Accept Invite & Activate Account",
         "tags": [
           "Auth"
+        ],
+        "security": [
+          {
+            "accessToken": []
+          }
         ]
       }
     },
     "/auth/login": {
       "post": {
-        "operationId": "AuthController_signIn",
+        "operationId": "AuthController_loginWithEmail",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -40,6 +45,11 @@
         "summary": "Login User",
         "tags": [
           "Auth"
+        ],
+        "security": [
+          {
+            "accessToken": []
+          }
         ]
       }
     },
@@ -61,6 +71,11 @@
         "summary": "Resend OTP",
         "tags": [
           "Auth"
+        ],
+        "security": [
+          {
+            "accessToken": []
+          }
         ]
       }
     },
@@ -82,48 +97,11 @@
         "summary": "Verify OTP",
         "tags": [
           "Auth"
-        ]
-      }
-    },
-    "/auth/send-otp/password-reset": {
-      "post": {
-        "operationId": "AuthController_sendForgotPasswordOtp",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SendForgotPasswordOtpDto"
-              }
-            }
+        ],
+        "security": [
+          {
+            "accessToken": []
           }
-        },
-        "responses": {},
-        "summary": "Send Forgot Password OTP",
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/auth/verify-otp/password-reset": {
-      "post": {
-        "operationId": "AuthController_verifyForgotPasswordOTP",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VerifyForgotPasswordOtpDto"
-              }
-            }
-          }
-        },
-        "responses": {},
-        "summary": "Verify Forgot Password OTP",
-        "tags": [
-          "Auth"
         ]
       }
     },
@@ -145,6 +123,11 @@
         "summary": "Change Password",
         "tags": [
           "Auth"
+        ],
+        "security": [
+          {
+            "accessToken": []
+          }
         ]
       }
     },
@@ -166,6 +149,11 @@
         "summary": "Forgot Password",
         "tags": [
           "Auth"
+        ],
+        "security": [
+          {
+            "accessToken": []
+          }
         ]
       }
     },
@@ -187,27 +175,11 @@
         "summary": "Reset Password",
         "tags": [
           "Auth"
-        ]
-      }
-    },
-    "/auth/refresh-token": {
-      "post": {
-        "operationId": "AuthController_refreshToken",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RefreshTokenDto"
-              }
-            }
+        ],
+        "security": [
+          {
+            "accessToken": []
           }
-        },
-        "responses": {},
-        "summary": "Refresh Access Token",
-        "tags": [
-          "Auth"
         ]
       }
     },
@@ -219,6 +191,11 @@
         "summary": "Get user profile",
         "tags": [
           "Profile"
+        ],
+        "security": [
+          {
+            "accessToken": []
+          }
         ]
       },
       "patch": {
@@ -238,13 +215,1919 @@
         "summary": "Update user profile",
         "tags": [
           "Profile"
+        ],
+        "security": [
+          {
+            "accessToken": []
+          }
+        ]
+      }
+    },
+    "/invites": {
+      "post": {
+        "operationId": "InviteController_createInvite",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInviteDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Admin creates and sends user invite",
+        "tags": [
+          "Invites"
+        ]
+      },
+      "get": {
+        "operationId": "InviteController_fetchAllInvites",
+        "parameters": [],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Admin lists invites",
+        "tags": [
+          "Invites"
+        ]
+      }
+    },
+    "/invites/verify/{token}": {
+      "get": {
+        "operationId": "InviteController_verifyInviteToken",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "summary": "Verify invite token validity (Public)",
+        "tags": [
+          "Invites"
+        ],
+        "security": [
+          {
+            "accessToken": []
+          }
+        ]
+      }
+    },
+    "/invites/{id}": {
+      "get": {
+        "operationId": "InviteController_fetchSingleInvite",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Admin fetches single invite details",
+        "tags": [
+          "Invites"
+        ]
+      },
+      "delete": {
+        "operationId": "InviteController_deleteInvite",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Admin cancels an invite",
+        "tags": [
+          "Invites"
+        ]
+      }
+    },
+    "/projects": {
+      "post": {
+        "operationId": "ProjectController_createProject",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Admin creates a new project",
+        "tags": [
+          "Projects"
+        ]
+      },
+      "get": {
+        "operationId": "ProjectController_fetchAllProjects",
+        "parameters": [],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "List projects (scoped by role per Rule #1)",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/projects/{id}": {
+      "get": {
+        "operationId": "ProjectController_fetchSingleProject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Get single project details (scoped by access)",
+        "tags": [
+          "Projects"
+        ]
+      },
+      "patch": {
+        "operationId": "ProjectController_updateProject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProjectDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Update project (Site Manager can only update their managed project)",
+        "tags": [
+          "Projects"
+        ]
+      },
+      "delete": {
+        "operationId": "ProjectController_deleteProject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Admin deletes a project",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/projects/{id}/budget-summary": {
+      "get": {
+        "operationId": "ProjectController_fetchBudgetSummary",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Get project budget summary (budget, spent, remaining)",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/projects/{id}/activity": {
+      "get": {
+        "operationId": "ProjectController_fetchProjectActivity",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Paginated activity log for a project (scoped per Rule #1)",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/projects/{projectId}/rates": {
+      "post": {
+        "operationId": "RateController_createRate",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetProjectWorkerRateDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Configure worker rate for project (Rule #3: rate history pattern)",
+        "tags": [
+          "Project Rates"
+        ]
+      },
+      "get": {
+        "operationId": "RateController_fetchAllRates",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Get worker rates for project",
+        "tags": [
+          "Project Rates"
+        ]
+      }
+    },
+    "/activity": {
+      "get": {
+        "operationId": "ActivityController_fetchGlobalActivity",
+        "parameters": [],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Admin-only global audit log across all projects, filterable by entityType, action, projectId",
+        "tags": [
+          "Activity Log"
+        ]
+      }
+    },
+    "/workers": {
+      "get": {
+        "operationId": "WorkerController_fetchAllWorkers",
+        "parameters": [],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "List workers (scoped per Rule #1)",
+        "tags": [
+          "Workers"
+        ]
+      }
+    },
+    "/workers/{id}": {
+      "get": {
+        "operationId": "WorkerController_fetchSingleWorker",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Fetch worker profile (scoped per Rule #1)",
+        "tags": [
+          "Workers"
+        ]
+      },
+      "patch": {
+        "operationId": "WorkerController_updateWorker",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWorkerDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Update worker profile",
+        "tags": [
+          "Workers"
+        ]
+      }
+    },
+    "/workers/{id}/assign": {
+      "post": {
+        "operationId": "WorkerController_assignWorker",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignWorkerDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Assign worker to project (enforcing Rule #2 and Rule #3)",
+        "tags": [
+          "Workers"
+        ]
+      }
+    },
+    "/workers/{id}/unassign": {
+      "post": {
+        "operationId": "WorkerController_unassignWorker",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Remove worker from project (enforcing Rule #2)",
+        "tags": [
+          "Workers"
+        ]
+      }
+    },
+    "/workers/{id}/withdraws": {
+      "post": {
+        "operationId": "WorkerController_createWithdraw",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWithdrawDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Worker submits a withdrawal request",
+        "tags": [
+          "Workers"
+        ]
+      },
+      "get": {
+        "operationId": "WorkerController_getWithdraws",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "List withdrawal requests for a worker (scoped per Rule #1)",
+        "tags": [
+          "Workers"
+        ]
+      }
+    },
+    "/workers/{id}/withdraws/{withdrawId}/review": {
+      "patch": {
+        "operationId": "WorkerController_reviewWithdraw",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "withdrawId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewWithdrawDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Admin/Manager reviews a withdrawal request (Accepted decrements currentEarnings)",
+        "tags": [
+          "Workers"
+        ]
+      }
+    },
+    "/workers/{id}/earnings": {
+      "get": {
+        "operationId": "WorkerController_getWorkerEarnings",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "ISO date string (e.g. 2026-09-01)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "ISO date string (e.g. 2026-09-30)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Compute live earnings for a worker from attendance records",
+        "tags": [
+          "Workers"
+        ]
+      }
+    },
+    "/attendances/mark": {
+      "post": {
+        "operationId": "AttendanceController_markAttendance",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkAttendanceDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Manager marks single worker attendance (Rule #4: upsert, half-day note validation)",
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/attendances/bulk": {
+      "post": {
+        "operationId": "AttendanceController_bulkMarkAttendance",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkMarkAttendanceDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Manager bulk-marks attendance for project date",
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/attendances/self-checkin": {
+      "post": {
+        "operationId": "AttendanceController_selfCheckIn",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelfCheckInDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Worker self-check-in / check-out (Pending Verification)",
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/attendances/{id}/verify": {
+      "patch": {
+        "operationId": "AttendanceController_verifyAttendance",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyAttendanceDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Manager verifies attendance and overwrites self-submitted data",
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/attendances": {
+      "get": {
+        "operationId": "AttendanceController_fetchAllAttendance",
+        "parameters": [],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "List attendance records (scoped per Rule #1)",
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/attendances/{id}": {
+      "get": {
+        "operationId": "AttendanceController_fetchSingleAttendance",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Get single attendance record",
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/tasks": {
+      "post": {
+        "operationId": "TaskController_createTask",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTaskDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Create task (Rule #8: posts system message to project chat)",
+        "tags": [
+          "Tasks"
+        ]
+      },
+      "get": {
+        "operationId": "TaskController_fetchAllTasks",
+        "parameters": [],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "List tasks (pass ?kanban=true for board grouped by status)",
+        "tags": [
+          "Tasks"
+        ]
+      }
+    },
+    "/tasks/{id}": {
+      "get": {
+        "operationId": "TaskController_fetchSingleTask",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Get single task with assignments and comments",
+        "tags": [
+          "Tasks"
+        ]
+      },
+      "patch": {
+        "operationId": "TaskController_updateTask",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTaskDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Update task status, priority, or progress",
+        "tags": [
+          "Tasks"
+        ]
+      },
+      "delete": {
+        "operationId": "TaskController_deleteTask",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Delete task",
+        "tags": [
+          "Tasks"
+        ]
+      }
+    },
+    "/tasks/{id}/assign": {
+      "post": {
+        "operationId": "TaskController_assignWorkerToTask",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignTaskWorkerDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Assign worker to task",
+        "tags": [
+          "Tasks"
+        ]
+      }
+    },
+    "/tasks/{id}/assign/{workerId}": {
+      "delete": {
+        "operationId": "TaskController_removeWorkerFromTask",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Remove worker assignment from task",
+        "tags": [
+          "Tasks"
+        ]
+      }
+    },
+    "/tasks/{id}/comments": {
+      "post": {
+        "operationId": "TaskController_createTaskComment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTaskCommentDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Add comment to task",
+        "tags": [
+          "Tasks"
+        ]
+      },
+      "get": {
+        "operationId": "TaskController_fetchAllTaskComments",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Get all comments for a task",
+        "tags": [
+          "Tasks"
+        ]
+      }
+    },
+    "/daily-reports": {
+      "post": {
+        "operationId": "DailyReportController_createDailyReport",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDailyReportDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Submit or update daily report for a project date",
+        "tags": [
+          "Daily Reports"
+        ]
+      },
+      "get": {
+        "operationId": "DailyReportController_fetchAllDailyReports",
+        "parameters": [],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "List daily reports (scoped per Rule #1)",
+        "tags": [
+          "Daily Reports"
+        ]
+      }
+    },
+    "/daily-reports/{id}": {
+      "get": {
+        "operationId": "DailyReportController_fetchSingleDailyReport",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Get single daily report",
+        "tags": [
+          "Daily Reports"
+        ]
+      },
+      "patch": {
+        "operationId": "DailyReportController_updateDailyReport",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDailyReportDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Update daily report details",
+        "tags": [
+          "Daily Reports"
+        ]
+      },
+      "delete": {
+        "operationId": "DailyReportController_deleteDailyReport",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Delete daily report",
+        "tags": [
+          "Daily Reports"
+        ]
+      }
+    },
+    "/expenses": {
+      "post": {
+        "operationId": "ExpenseController_createExpense",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExpenseDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Record new project expense",
+        "tags": [
+          "Expenses"
+        ]
+      },
+      "get": {
+        "operationId": "ExpenseController_fetchAllExpenses",
+        "parameters": [],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "List project expenses (scoped per Rule #1)",
+        "tags": [
+          "Expenses"
+        ]
+      }
+    },
+    "/expenses/{id}/review": {
+      "patch": {
+        "operationId": "ExpenseController_reviewExpense",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewExpenseDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Review expense (Approve, Reject, or Mark as Paid)",
+        "tags": [
+          "Expenses"
+        ]
+      }
+    },
+    "/expenses/{id}": {
+      "get": {
+        "operationId": "ExpenseController_fetchSingleExpense",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Get single expense details",
+        "tags": [
+          "Expenses"
+        ]
+      },
+      "patch": {
+        "operationId": "ExpenseController_updateExpense",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateExpenseDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Update expense details",
+        "tags": [
+          "Expenses"
+        ]
+      },
+      "delete": {
+        "operationId": "ExpenseController_deleteExpense",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Delete expense",
+        "tags": [
+          "Expenses"
+        ]
+      }
+    },
+    "/materials": {
+      "post": {
+        "operationId": "MaterialController_createMaterial",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMaterialDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Create new material item in inventory catalog",
+        "tags": [
+          "Materials"
+        ]
+      },
+      "get": {
+        "operationId": "MaterialController_fetchAllMaterials",
+        "parameters": [],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "List materials catalog and stock levels",
+        "tags": [
+          "Materials"
+        ]
+      }
+    },
+    "/materials/requests": {
+      "post": {
+        "operationId": "MaterialController_createMaterialRequest",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMaterialRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Submit material request for a project",
+        "tags": [
+          "Materials"
+        ]
+      },
+      "get": {
+        "operationId": "MaterialController_fetchAllMaterialRequests",
+        "parameters": [],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "List material requests (scoped per Rule #1)",
+        "tags": [
+          "Materials"
+        ]
+      }
+    },
+    "/materials/requests/{id}/review": {
+      "patch": {
+        "operationId": "MaterialController_reviewMaterialRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewMaterialRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Review material request (Rule #6: status change only, does NOT change stock)",
+        "tags": [
+          "Materials"
+        ]
+      }
+    },
+    "/materials/{id}": {
+      "get": {
+        "operationId": "MaterialController_fetchSingleMaterial",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Get single material details with purchases and usages",
+        "tags": [
+          "Materials"
+        ]
+      },
+      "patch": {
+        "operationId": "MaterialController_updateMaterial",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMaterialDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Update material details",
+        "tags": [
+          "Materials"
+        ]
+      }
+    },
+    "/materials/{id}/purchases": {
+      "post": {
+        "operationId": "MaterialController_createMaterialPurchase",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMaterialPurchaseDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Record material purchase (Rule #6: increments Material.currentStock)",
+        "tags": [
+          "Materials"
+        ]
+      }
+    },
+    "/materials/{id}/usages": {
+      "post": {
+        "operationId": "MaterialController_createMaterialUsage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMaterialUsageDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Record material usage (Rule #6: decrements currentStock, rejects if insufficient)",
+        "tags": [
+          "Materials"
+        ]
+      }
+    },
+    "/payments": {
+      "post": {
+        "operationId": "PaymentController_createPayment",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePaymentDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Record a worker payment (Rule #5: decrements outstandingAmount in transaction)",
+        "tags": [
+          "Payments"
+        ]
+      },
+      "get": {
+        "operationId": "PaymentController_fetchAllPayments",
+        "parameters": [],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "List payments (scoped per Rule #1)",
+        "tags": [
+          "Payments"
+        ]
+      }
+    },
+    "/payments/{id}": {
+      "get": {
+        "operationId": "PaymentController_fetchSinglePayment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Fetch single payment (scoped per Rule #1)",
+        "tags": [
+          "Payments"
+        ]
+      },
+      "delete": {
+        "operationId": "PaymentController_deletePayment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Reverse/delete a payment (Admin only — re-increments outstandingAmount)",
+        "tags": [
+          "Payments"
+        ]
+      }
+    },
+    "/chat/rooms": {
+      "post": {
+        "operationId": "ChatController_getOrCreateRoom",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrGetRoomDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Find or create a 1:1 DM room between caller and receiverId",
+        "tags": [
+          "Chat"
+        ]
+      },
+      "get": {
+        "operationId": "ChatController_getRooms",
+        "parameters": [],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "List all 1:1 DM rooms for the current user with last-message preview",
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/chat/rooms/{roomId}/messages": {
+      "get": {
+        "operationId": "ChatController_getRoomMessages",
+        "parameters": [
+          {
+            "name": "roomId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Paginated messages for a 1:1 DM room (marks as read on fetch)",
+        "tags": [
+          "Chat"
+        ]
+      },
+      "post": {
+        "operationId": "ChatController_sendDirectMessage",
+        "parameters": [
+          {
+            "name": "roomId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendDirectMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Send a direct message in a 1:1 DM room",
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/chat/project-rooms/{projectId}/messages": {
+      "get": {
+        "operationId": "ChatController_getProjectMessages",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Paginated messages for a project group chat (scoped per Rule #1)",
+        "tags": [
+          "Chat"
+        ]
+      },
+      "post": {
+        "operationId": "ChatController_sendProjectMessage",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendProjectMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Send a message in a project group chat (scoped per Rule #1)",
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/leaves": {
+      "post": {
+        "operationId": "LeaveController_createLeave",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLeaveDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Create a leave request",
+        "tags": [
+          "Leave Requests"
+        ]
+      },
+      "get": {
+        "operationId": "LeaveController_fetchAllLeaves",
+        "parameters": [],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "List leave requests scoped by role",
+        "tags": [
+          "Leave Requests"
+        ]
+      }
+    },
+    "/leaves/{id}": {
+      "get": {
+        "operationId": "LeaveController_fetchSingleLeave",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Get one leave request",
+        "tags": [
+          "Leave Requests"
+        ]
+      }
+    },
+    "/leaves/{id}/review": {
+      "patch": {
+        "operationId": "LeaveController_reviewLeave",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewLeaveDto"
+              }
+            }
+          }
+        },
+        "responses": {},
+        "security": [
+          {
+            "accessToken": []
+          }
+        ],
+        "summary": "Approve or reject a leave request",
+        "tags": [
+          "Leave Requests"
         ]
       }
     }
   },
   "info": {
     "title": "Building Management System API",
-    "description": "The API Description for Building Management System",
+    "description": "The API Description for NestJS Backend Starter Pack",
     "version": "1.0",
     "contact": {}
   },
@@ -257,32 +2140,38 @@
         "bearerFormat": "JWT",
         "type": "http",
         "name": "Authorization",
-        "description": "Enter JWT token",
+        "description": "JWT Access Token",
         "in": "header"
       }
     },
     "schemas": {
-      "RegisterUserDto": {
+      "AcceptInviteDto": {
         "type": "object",
         "properties": {
-          "name": {
-            "type": "string"
-          },
-          "email": {
+          "token": {
             "type": "string",
-            "format": "email"
+            "description": "Invite token received by email"
           },
-          "phone": {
-            "type": "string"
+          "userName": {
+            "type": "string",
+            "example": "Rahim Ahmed",
+            "description": "User full name"
           },
           "password": {
-            "type": "string"
+            "type": "string",
+            "minLength": 6,
+            "example": "password123",
+            "description": "Set new password"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "example": "01712345678",
+            "description": "Phone number (optional)"
           }
         },
         "required": [
-          "name",
-          "email",
-          "phone",
+          "token",
+          "userName",
           "password"
         ]
       },
@@ -291,10 +2180,14 @@
         "properties": {
           "email": {
             "type": "string",
-            "format": "email"
+            "format": "email",
+            "example": "admin@example.com",
+            "description": "User email address"
           },
           "password": {
-            "type": "string"
+            "type": "string",
+            "example": "123456",
+            "description": "User password"
           }
         },
         "required": [
@@ -307,7 +2200,8 @@
         "properties": {
           "email": {
             "type": "string",
-            "format": "email"
+            "format": "email",
+            "example": "user@example.com"
           }
         },
         "required": [
@@ -318,39 +2212,13 @@
         "type": "object",
         "properties": {
           "otp": {
-            "type": "string"
+            "type": "string",
+            "example": "123456"
           },
           "email": {
             "type": "string",
-            "format": "email"
-          }
-        },
-        "required": [
-          "otp",
-          "email"
-        ]
-      },
-      "SendForgotPasswordOtpDto": {
-        "type": "object",
-        "properties": {
-          "email": {
-            "type": "string",
-            "format": "email"
-          }
-        },
-        "required": [
-          "email"
-        ]
-      },
-      "VerifyForgotPasswordOtpDto": {
-        "type": "object",
-        "properties": {
-          "otp": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string",
-            "format": "email"
+            "format": "email",
+            "example": "user@example.com"
           }
         },
         "required": [
@@ -365,7 +2233,8 @@
             "type": "string"
           },
           "newPassword": {
-            "type": "string"
+            "type": "string",
+            "minLength": 6
           }
         },
         "required": [
@@ -378,7 +2247,8 @@
         "properties": {
           "email": {
             "type": "string",
-            "format": "email"
+            "format": "email",
+            "example": "user@example.com"
           }
         },
         "required": [
@@ -389,26 +2259,17 @@
         "type": "object",
         "properties": {
           "token": {
-            "type": "string"
+            "type": "string",
+            "description": "Reset token"
           },
           "password": {
-            "type": "string"
+            "type": "string",
+            "minLength": 6
           }
         },
         "required": [
           "token",
           "password"
-        ]
-      },
-      "RefreshTokenDto": {
-        "type": "object",
-        "properties": {
-          "refreshToken": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "refreshToken"
         ]
       },
       "UpdateProfileDto": {
@@ -427,12 +2288,1202 @@
             "type": "string"
           }
         }
+      },
+      "CreateInviteDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "worker@example.com",
+            "description": "Email to send invitation to"
+          },
+          "role": {
+            "enum": [
+              "ADMIN",
+              "WORKER",
+              "SITE_MANAGER"
+            ],
+            "type": "string",
+            "description": "Roles: ADMIN, WORKER, SITE_MANAGER",
+            "example": "WORKER"
+          },
+          "workerCategory": {
+            "enum": [
+              "Plumber",
+              "Electrician",
+              "Carpenter",
+              "Painter",
+              "Cleaner",
+              "Mechanic",
+              "HVAC_Technician",
+              "Mason",
+              "Welder"
+            ],
+            "type": "string",
+            "description": "Worker category (required if role is WORKER): Plumber, Electrician, Carpenter, Painter, Cleaner, Mechanic, HVAC_Technician, Mason, Welder",
+            "example": "Mason"
+          }
+        },
+        "required": [
+          "email",
+          "role"
+        ]
+      },
+      "CreateProjectDto": {
+        "type": "object",
+        "properties": {
+          "projectName": {
+            "type": "string",
+            "example": "Metro Rail Phase 2",
+            "description": "Name of the project"
+          },
+          "projectCode": {
+            "type": "string",
+            "example": "MRP-02",
+            "description": "Unique project code"
+          },
+          "managerId": {
+            "type": "string",
+            "description": "ID of the User with SITE_MANAGER role assigned to this project"
+          },
+          "address": {
+            "type": "string",
+            "example": "Sector 10, Uttara, Dhaka"
+          },
+          "description": {
+            "type": "string",
+            "example": "Construction of metro overpass and station infrastructure."
+          },
+          "projectImage": {
+            "type": "string",
+            "example": "metro_site.jpg",
+            "description": "Project banner or main photo"
+          },
+          "budget": {
+            "type": "number",
+            "minimum": 0,
+            "example": 5000000,
+            "description": "Total project budget"
+          },
+          "status": {
+            "enum": [
+              "Ongoing",
+              "Paused",
+              "Completed"
+            ],
+            "type": "string",
+            "description": "Status: Ongoing, Paused, Completed",
+            "default": "Ongoing"
+          },
+          "standardWorkHours": {
+            "type": "number",
+            "minimum": 1,
+            "example": 8,
+            "default": 8,
+            "description": "Standard work hours per day"
+          },
+          "startDate": {
+            "type": "string",
+            "example": "2026-03-01T00:00:00.000Z"
+          },
+          "endDate": {
+            "type": "string",
+            "example": "2027-12-31T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "projectName",
+          "managerId",
+          "address",
+          "description",
+          "projectImage"
+        ]
+      },
+      "UpdateProjectDto": {
+        "type": "object",
+        "properties": {
+          "projectName": {
+            "type": "string"
+          },
+          "projectCode": {
+            "type": "string"
+          },
+          "managerId": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "projectImage": {
+            "type": "string"
+          },
+          "budget": {
+            "type": "number",
+            "minimum": 0
+          },
+          "status": {
+            "enum": [
+              "Ongoing",
+              "Paused",
+              "Completed"
+            ],
+            "type": "string"
+          },
+          "standardWorkHours": {
+            "type": "number",
+            "minimum": 1
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string"
+          }
+        }
+      },
+      "SetProjectWorkerRateDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "enum": [
+              "Plumber",
+              "Electrician",
+              "Carpenter",
+              "Painter",
+              "Cleaner",
+              "Mechanic",
+              "HVAC_Technician",
+              "Mason",
+              "Welder"
+            ],
+            "type": "string",
+            "description": "Worker category: Plumber, Electrician, Carpenter, Painter, Cleaner, Mechanic, HVAC_Technician, Mason, Welder",
+            "example": "Mason"
+          },
+          "dailyRate": {
+            "type": "number",
+            "minimum": 0,
+            "example": 1200,
+            "description": "Daily rate in currency units (e.g. BDT/USD cents)"
+          },
+          "overtimeRate": {
+            "type": "number",
+            "minimum": 0,
+            "example": 180,
+            "description": "Overtime hourly rate"
+          }
+        },
+        "required": [
+          "category",
+          "dailyRate"
+        ]
+      },
+      "UpdateWorkerDto": {
+        "type": "object",
+        "properties": {
+          "workerCategory": {
+            "enum": [
+              "Plumber",
+              "Electrician",
+              "Carpenter",
+              "Painter",
+              "Cleaner",
+              "Mechanic",
+              "HVAC_Technician",
+              "Mason",
+              "Welder"
+            ],
+            "type": "string",
+            "description": "Worker Category: Plumber, Electrician, Carpenter, Painter, Cleaner, Mechanic, HVAC_Technician, Mason, Welder"
+          },
+          "phoneNumber": {
+            "type": "string"
+          },
+          "presentAddress": {
+            "type": "string"
+          },
+          "permanentAddress": {
+            "type": "string"
+          }
+        }
+      },
+      "AssignWorkerDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "description": "Target Project ID to assign the worker to"
+          },
+          "overrideDailyRate": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Optional custom daily rate override (otherwise snapshots active project rate)"
+          }
+        },
+        "required": [
+          "projectId"
+        ]
+      },
+      "CreateWithdrawDto": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "minimum": 1,
+            "example": 2000,
+            "description": "Withdrawal amount requested (positive integer)"
+          }
+        },
+        "required": [
+          "amount"
+        ]
+      },
+      "ReviewWithdrawDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "Accepted",
+              "Rejected"
+            ],
+            "type": "string",
+            "description": "Accept or Reject the withdrawal request",
+            "example": "Accepted"
+          },
+          "note": {
+            "type": "string",
+            "example": "Approved for September payout"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "MarkAttendanceDto": {
+        "type": "object",
+        "properties": {
+          "workerId": {
+            "type": "string",
+            "description": "Worker ID (WorkerProfile ID or User ID)"
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "date": {
+            "type": "string",
+            "example": "2026-09-18",
+            "description": "Date of attendance (YYYY-MM-DD)"
+          },
+          "status": {
+            "enum": [
+              "Present",
+              "Absent",
+              "Half_Day",
+              "Leave",
+              "Holiday",
+              "Pending_Verification"
+            ],
+            "type": "string",
+            "description": "Status: Present, Absent, Half_Day, Leave, Holiday, Pending_Verification",
+            "example": "Present"
+          },
+          "checkIn": {
+            "type": "string",
+            "example": "2026-09-18T08:00:00.000Z"
+          },
+          "checkOut": {
+            "type": "string",
+            "example": "2026-09-18T17:00:00.000Z"
+          },
+          "workingHours": {
+            "type": "number",
+            "minimum": 0,
+            "example": 8
+          },
+          "overtimeHours": {
+            "type": "number",
+            "minimum": 0,
+            "example": 2
+          },
+          "notes": {
+            "type": "string",
+            "description": "Required if status is Half_Day"
+          }
+        },
+        "required": [
+          "workerId",
+          "projectId",
+          "date",
+          "status"
+        ]
+      },
+      "BulkMarkAttendanceItemDto": {
+        "type": "object",
+        "properties": {
+          "workerId": {
+            "type": "string",
+            "description": "Worker ID"
+          },
+          "status": {
+            "enum": [
+              "Present",
+              "Absent",
+              "Half_Day",
+              "Leave",
+              "Holiday",
+              "Pending_Verification"
+            ],
+            "type": "string",
+            "example": "Present"
+          },
+          "notes": {
+            "type": "string",
+            "example": "Left after lunch for medical reason"
+          },
+          "checkIn": {
+            "type": "string"
+          },
+          "checkOut": {
+            "type": "string"
+          },
+          "overtimeHours": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "workerId",
+          "status"
+        ]
+      },
+      "BulkMarkAttendanceDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "date": {
+            "type": "string",
+            "example": "2026-09-18"
+          },
+          "attendances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulkMarkAttendanceItemDto"
+            }
+          }
+        },
+        "required": [
+          "projectId",
+          "date",
+          "attendances"
+        ]
+      },
+      "SelfCheckInDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "description": "Optional project ID if worker is assigned to multiple"
+          },
+          "date": {
+            "type": "string",
+            "example": "2026-09-18",
+            "description": "Attendance date (defaults to today)"
+          },
+          "checkIn": {
+            "type": "string",
+            "example": "2026-09-18T08:15:00.000Z"
+          },
+          "checkOut": {
+            "type": "string",
+            "example": "2026-09-18T17:30:00.000Z"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "VerifyAttendanceDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "Present",
+              "Absent",
+              "Half_Day",
+              "Leave",
+              "Holiday",
+              "Pending_Verification"
+            ],
+            "type": "string",
+            "description": "Authoritative status: Present, Absent, Half_Day, Leave, Holiday, Pending_Verification",
+            "example": "Present"
+          },
+          "checkIn": {
+            "type": "string"
+          },
+          "checkOut": {
+            "type": "string"
+          },
+          "workingHours": {
+            "type": "number",
+            "minimum": 0
+          },
+          "overtimeHours": {
+            "type": "number",
+            "minimum": 0
+          },
+          "notes": {
+            "type": "string",
+            "description": "Required if status is Half_Day"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "CreateTaskDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "title": {
+            "type": "string",
+            "example": "Pour 3rd floor concrete slab",
+            "description": "Task title"
+          },
+          "description": {
+            "type": "string",
+            "example": "Ensure rebar inspection passes before pouring concrete."
+          },
+          "priority": {
+            "enum": [
+              "Low",
+              "Medium",
+              "High",
+              "Urgent"
+            ],
+            "type": "string",
+            "description": "Priority: Low, Medium, High, Urgent",
+            "default": "Medium"
+          },
+          "status": {
+            "enum": [
+              "To_Do",
+              "In_Progress",
+              "Blocked",
+              "Completed",
+              "Cancelled"
+            ],
+            "type": "string",
+            "description": "Status: To_Do, In_Progress, Blocked, Completed, Cancelled",
+            "default": "To_Do"
+          },
+          "progress": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "example": 0,
+            "description": "Progress percentage"
+          },
+          "startDate": {
+            "type": "string",
+            "example": "2026-09-20T08:00:00.000Z"
+          },
+          "dueDate": {
+            "type": "string",
+            "example": "2026-09-25T18:00:00.000Z"
+          },
+          "assignedWorkerIds": {
+            "description": "List of Worker IDs to assign",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "projectId",
+          "title"
+        ]
+      },
+      "UpdateTaskDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "priority": {
+            "enum": [
+              "Low",
+              "Medium",
+              "High",
+              "Urgent"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "To_Do",
+              "In_Progress",
+              "Blocked",
+              "Completed",
+              "Cancelled"
+            ],
+            "type": "string"
+          },
+          "progress": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "dueDate": {
+            "type": "string"
+          }
+        }
+      },
+      "AssignTaskWorkerDto": {
+        "type": "object",
+        "properties": {
+          "workerId": {
+            "type": "string",
+            "description": "Worker ID (WorkerProfile ID or User ID)"
+          }
+        },
+        "required": [
+          "workerId"
+        ]
+      },
+      "CreateTaskCommentDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "example": "Rebar inspected and approved by structural engineer."
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
+      "CreateDailyReportDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "date": {
+            "type": "string",
+            "example": "2026-09-18",
+            "description": "Report date (YYYY-MM-DD)"
+          },
+          "weather": {
+            "type": "string",
+            "example": "Sunny, 32°C",
+            "description": "Weather conditions"
+          },
+          "presentWorkers": {
+            "type": "number",
+            "minimum": 0,
+            "example": 25,
+            "description": "Number of present workers"
+          },
+          "absentWorkers": {
+            "type": "number",
+            "minimum": 0,
+            "example": 2,
+            "description": "Number of absent workers"
+          },
+          "workCompleted": {
+            "type": "string",
+            "example": "Completed 2nd floor column reinforcement and formwork."
+          },
+          "workInProgress": {
+            "type": "string",
+            "example": "Placing conduit pipes for electrical wiring."
+          },
+          "issues": {
+            "type": "string",
+            "example": "Delay in gravel delivery by 2 hours."
+          },
+          "delays": {
+            "type": "string",
+            "example": "Heavy morning rain caused 1 hour delay."
+          },
+          "safetyNotes": {
+            "type": "string",
+            "example": "All workers wearing helmets and safety boots. No incidents."
+          },
+          "photos": {
+            "description": "Photo filenames or URLs",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "projectId",
+          "date"
+        ]
+      },
+      "UpdateDailyReportDto": {
+        "type": "object",
+        "properties": {
+          "weather": {
+            "type": "string"
+          },
+          "presentWorkers": {
+            "type": "number",
+            "minimum": 0
+          },
+          "absentWorkers": {
+            "type": "number",
+            "minimum": 0
+          },
+          "workCompleted": {
+            "type": "string"
+          },
+          "workInProgress": {
+            "type": "string"
+          },
+          "issues": {
+            "type": "string"
+          },
+          "delays": {
+            "type": "string"
+          },
+          "safetyNotes": {
+            "type": "string"
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "CreateExpenseDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "title": {
+            "type": "string",
+            "example": "Cement delivery transport fee",
+            "description": "Expense title"
+          },
+          "category": {
+            "enum": [
+              "Labor",
+              "Materials",
+              "Transportation",
+              "Equipment_Rental",
+              "Food",
+              "Accommodation",
+              "Miscellaneous"
+            ],
+            "type": "string",
+            "description": "Category: Labor, Materials, Transportation, Equipment_Rental, Food, Accommodation, Miscellaneous",
+            "example": "Transportation"
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 1,
+            "example": 4500,
+            "description": "Expense amount"
+          },
+          "date": {
+            "type": "string",
+            "example": "2026-09-18T10:00:00.000Z"
+          },
+          "vendor": {
+            "type": "string",
+            "example": "Dhaka Transport Agency"
+          },
+          "reference": {
+            "type": "string",
+            "example": "INV-99201"
+          },
+          "receiptUrl": {
+            "type": "string",
+            "example": "receipt_99201.jpg"
+          },
+          "notes": {
+            "type": "string",
+            "example": "Delivered 200 bags of cement to Sector 10 site"
+          }
+        },
+        "required": [
+          "projectId",
+          "title",
+          "category",
+          "amount"
+        ]
+      },
+      "ReviewExpenseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "Pending",
+              "Approved",
+              "Rejected",
+              "Paid"
+            ],
+            "type": "string",
+            "description": "Status to transition to: Approved, Rejected, or Paid",
+            "example": "Approved"
+          },
+          "notes": {
+            "type": "string",
+            "example": "Approved per project invoice verification."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "UpdateExpenseDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "category": {
+            "enum": [
+              "Labor",
+              "Materials",
+              "Transportation",
+              "Equipment_Rental",
+              "Food",
+              "Accommodation",
+              "Miscellaneous"
+            ],
+            "type": "string"
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 1
+          },
+          "date": {
+            "type": "string"
+          },
+          "vendor": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "receiptUrl": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateMaterialDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Portland Cement 50kg",
+            "description": "Material item name"
+          },
+          "category": {
+            "enum": [
+              "Cement",
+              "Brick",
+              "Sand",
+              "Steel",
+              "Paint",
+              "Tiles",
+              "Wood",
+              "Pipes",
+              "Electrical",
+              "Other"
+            ],
+            "type": "string",
+            "description": "Category: Cement, Brick, Sand, Steel, Paint, Tiles, Wood, Pipes, Electrical, Other",
+            "example": "Cement"
+          },
+          "unit": {
+            "enum": [
+              "Bag",
+              "Piece",
+              "Kg",
+              "Ton",
+              "Liter",
+              "Meter",
+              "CubicFeet",
+              "Unit"
+            ],
+            "type": "string",
+            "description": "Measurement unit: Bag, Piece, Kg, Ton, Liter, Meter, CubicFeet, Unit",
+            "example": "Bag"
+          },
+          "unitCost": {
+            "type": "number",
+            "minimum": 1,
+            "example": 550,
+            "description": "Standard unit cost"
+          },
+          "minimumStock": {
+            "type": "number",
+            "minimum": 0,
+            "example": 50,
+            "description": "Minimum inventory threshold for alerts"
+          },
+          "supplier": {
+            "type": "string",
+            "example": "Holcim Bangladesh Ltd."
+          },
+          "location": {
+            "type": "string",
+            "example": "Warehouse Sector 4"
+          }
+        },
+        "required": [
+          "name",
+          "category",
+          "unit",
+          "unitCost"
+        ]
+      },
+      "CreateMaterialRequestDto": {
+        "type": "object",
+        "properties": {
+          "materialId": {
+            "type": "string",
+            "description": "Material ID"
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 1,
+            "example": 50,
+            "description": "Quantity requested"
+          },
+          "requiredDate": {
+            "type": "string",
+            "example": "2026-09-22T08:00:00.000Z"
+          },
+          "reason": {
+            "type": "string",
+            "example": "Needed for rooftop waterproofing"
+          }
+        },
+        "required": [
+          "materialId",
+          "projectId",
+          "quantity"
+        ]
+      },
+      "ReviewMaterialRequestDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "Pending",
+              "Approved",
+              "Rejected",
+              "Fulfilled",
+              "Cancelled"
+            ],
+            "type": "string",
+            "description": "Status: Pending, Approved, Rejected, Fulfilled, Cancelled",
+            "example": "Approved"
+          },
+          "reviewNote": {
+            "type": "string",
+            "example": "Approved. Vendor delivery arranged for Tuesday."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "UpdateMaterialDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "enum": [
+              "Cement",
+              "Brick",
+              "Sand",
+              "Steel",
+              "Paint",
+              "Tiles",
+              "Wood",
+              "Pipes",
+              "Electrical",
+              "Other"
+            ],
+            "type": "string"
+          },
+          "unit": {
+            "enum": [
+              "Bag",
+              "Piece",
+              "Kg",
+              "Ton",
+              "Liter",
+              "Meter",
+              "CubicFeet",
+              "Unit"
+            ],
+            "type": "string"
+          },
+          "unitCost": {
+            "type": "number",
+            "minimum": 1
+          },
+          "minimumStock": {
+            "type": "number",
+            "minimum": 0
+          },
+          "supplier": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateMaterialPurchaseDto": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "minimum": 1,
+            "example": 100,
+            "description": "Quantity purchased"
+          },
+          "unitCost": {
+            "type": "number",
+            "minimum": 1,
+            "example": 540,
+            "description": "Unit purchase price"
+          },
+          "supplier": {
+            "type": "string",
+            "example": "Holcim Cement Depot"
+          },
+          "date": {
+            "type": "string",
+            "example": "2026-09-18T10:00:00.000Z"
+          }
+        },
+        "required": [
+          "quantity",
+          "unitCost"
+        ]
+      },
+      "CreateMaterialUsageDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "description": "Project ID where materials are consumed"
+          },
+          "quantityUsed": {
+            "type": "number",
+            "minimum": 1,
+            "example": 25,
+            "description": "Quantity consumed (must not exceed currentStock)"
+          },
+          "date": {
+            "type": "string",
+            "example": "2026-09-18"
+          },
+          "notes": {
+            "type": "string",
+            "example": "Used for 3rd floor column casting"
+          }
+        },
+        "required": [
+          "projectId",
+          "quantityUsed"
+        ]
+      },
+      "CreatePaymentDto": {
+        "type": "object",
+        "properties": {
+          "workerId": {
+            "type": "string",
+            "description": "Worker User ID to pay"
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Project ID the payment is for"
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 1,
+            "example": 5000,
+            "description": "Payment amount (integer, BDT)"
+          },
+          "method": {
+            "enum": [
+              "Cash",
+              "Bank_Transfer",
+              "Mobile_Banking",
+              "Other"
+            ],
+            "type": "string",
+            "description": "Payment method: Cash, Bank_Transfer, Mobile_Banking, Other",
+            "example": "Cash"
+          },
+          "reference": {
+            "type": "string",
+            "example": "TXN-998877",
+            "description": "Bank/mobile-banking reference"
+          },
+          "note": {
+            "type": "string",
+            "example": "September salary advance"
+          }
+        },
+        "required": [
+          "workerId",
+          "projectId",
+          "amount",
+          "method"
+        ]
+      },
+      "CreateOrGetRoomDto": {
+        "type": "object",
+        "properties": {
+          "receiverId": {
+            "type": "string",
+            "description": "The other user's ID to open a 1:1 DM room with"
+          }
+        },
+        "required": [
+          "receiverId"
+        ]
+      },
+      "SendDirectMessageDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "example": "Hi, how is the site progress?"
+          },
+          "fileUrl": {
+            "description": "Array of file/image URLs",
+            "example": [
+              "uploads/img1.jpg"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SendProjectMessageDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "example": "Foundation work is complete."
+          },
+          "fileUrl": {
+            "description": "Array of file/image URLs",
+            "example": [
+              "uploads/report.pdf"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "CreateLeaveDto": {
+        "type": "object",
+        "properties": {
+          "workerId": {
+            "type": "string",
+            "description": "Worker User ID requesting leave"
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Project ID for the leave request"
+          },
+          "leaveType": {
+            "type": "string",
+            "example": "Annual leave"
+          },
+          "startDate": {
+            "type": "string",
+            "example": "2026-09-21"
+          },
+          "endDate": {
+            "type": "string",
+            "example": "2026-09-23"
+          },
+          "reason": {
+            "type": "string",
+            "example": "Family event"
+          }
+        },
+        "required": [
+          "workerId",
+          "projectId",
+          "leaveType",
+          "startDate",
+          "endDate",
+          "reason"
+        ]
+      },
+      "ReviewLeaveDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "Accepted",
+              "Rejected"
+            ],
+            "type": "string",
+            "example": "Accepted"
+          },
+          "reviewNote": {
+            "type": "string",
+            "example": "Approved for the requested dates"
+          }
+        },
+        "required": [
+          "status"
+        ]
       }
     }
-  },
-  "security": [
-    {
-      "accessToken": []
-    }
-  ]
+  }
 }

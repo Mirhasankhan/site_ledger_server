@@ -21,7 +21,6 @@
 
 //   async validate(
 //     accessToken: string,
-//     refreshToken: string,
 //     profile: Profile,
 //     done: Function,
 //   ) {

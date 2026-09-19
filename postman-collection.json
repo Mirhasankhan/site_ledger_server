@@ -15,13 +15,8 @@
                                 "name": "Register User",
                                 "description": {},
                                 "url": {
-                                    "path": [
-                                        "auth",
-                                        "register"
-                                    ],
-                                    "host": [
-                                        "{{baseUrl}}"
-                                    ],
+                                    "path": ["auth", "register"],
+                                    "host": ["{{baseUrl}}"],
                                     "query": [],
                                     "variable": []
                                 },
@@ -63,13 +58,8 @@
                                 "name": "Login User",
                                 "description": {},
                                 "url": {
-                                    "path": [
-                                        "auth",
-                                        "login"
-                                    ],
-                                    "host": [
-                                        "{{baseUrl}}"
-                                    ],
+                                    "path": ["auth", "login"],
+                                    "host": ["{{baseUrl}}"],
                                     "query": [],
                                     "variable": []
                                 },
@@ -111,13 +101,8 @@
                                 "name": "Resend OTP",
                                 "description": {},
                                 "url": {
-                                    "path": [
-                                        "auth",
-                                        "send-otp"
-                                    ],
-                                    "host": [
-                                        "{{baseUrl}}"
-                                    ],
+                                    "path": ["auth", "send-otp"],
+                                    "host": ["{{baseUrl}}"],
                                     "query": [],
                                     "variable": []
                                 },
@@ -162,9 +147,7 @@
                                                 "send-otp",
                                                 "password-reset"
                                             ],
-                                            "host": [
-                                                "{{baseUrl}}"
-                                            ],
+                                            "host": ["{{baseUrl}}"],
                                             "query": [],
                                             "variable": []
                                         },
@@ -208,13 +191,8 @@
                                 "name": "Verify OTP",
                                 "description": {},
                                 "url": {
-                                    "path": [
-                                        "auth",
-                                        "verify-otp"
-                                    ],
-                                    "host": [
-                                        "{{baseUrl}}"
-                                    ],
+                                    "path": ["auth", "verify-otp"],
+                                    "host": ["{{baseUrl}}"],
                                     "query": [],
                                     "variable": []
                                 },
@@ -259,9 +237,7 @@
                                                 "verify-otp",
                                                 "password-reset"
                                             ],
-                                            "host": [
-                                                "{{baseUrl}}"
-                                            ],
+                                            "host": ["{{baseUrl}}"],
                                             "query": [],
                                             "variable": []
                                         },
@@ -305,13 +281,8 @@
                                 "name": "Change Password",
                                 "description": {},
                                 "url": {
-                                    "path": [
-                                        "auth",
-                                        "change-password"
-                                    ],
-                                    "host": [
-                                        "{{baseUrl}}"
-                                    ],
+                                    "path": ["auth", "change-password"],
+                                    "host": ["{{baseUrl}}"],
                                     "query": [],
                                     "variable": []
                                 },
@@ -353,13 +324,8 @@
                                 "name": "Forgot Password",
                                 "description": {},
                                 "url": {
-                                    "path": [
-                                        "auth",
-                                        "forgot-password"
-                                    ],
-                                    "host": [
-                                        "{{baseUrl}}"
-                                    ],
+                                    "path": ["auth", "forgot-password"],
+                                    "host": ["{{baseUrl}}"],
                                     "query": [],
                                     "variable": []
                                 },
@@ -401,13 +367,8 @@
                                 "name": "Reset Password",
                                 "description": {},
                                 "url": {
-                                    "path": [
-                                        "auth",
-                                        "reset-password"
-                                    ],
-                                    "host": [
-                                        "{{baseUrl}}"
-                                    ],
+                                    "path": ["auth", "reset-password"],
+                                    "host": ["{{baseUrl}}"],
                                     "query": [],
                                     "variable": []
                                 },
@@ -421,54 +382,6 @@
                                 "body": {
                                     "mode": "raw",
                                     "raw": "{\n  \"token\": \"<string>\",\n  \"password\": \"<string>\"\n}",
-                                    "options": {
-                                        "raw": {
-                                            "headerFamily": "json",
-                                            "language": "json"
-                                        }
-                                    }
-                                },
-                                "auth": null
-                            },
-                            "response": [],
-                            "event": [],
-                            "protocolProfileBehavior": {
-                                "disableBodyPruning": true
-                            }
-                        }
-                    ]
-                },
-                {
-                    "name": "refresh-token",
-                    "description": "",
-                    "item": [
-                        {
-                            "id": "97ea5026-ec88-43f6-aa66-2ad1c9b53e8a",
-                            "name": "Refresh Access Token",
-                            "request": {
-                                "name": "Refresh Access Token",
-                                "description": {},
-                                "url": {
-                                    "path": [
-                                        "auth",
-                                        "refresh-token"
-                                    ],
-                                    "host": [
-                                        "{{baseUrl}}"
-                                    ],
-                                    "query": [],
-                                    "variable": []
-                                },
-                                "header": [
-                                    {
-                                        "key": "Content-Type",
-                                        "value": "application/json"
-                                    }
-                                ],
-                                "method": "POST",
-                                "body": {
-                                    "mode": "raw",
-                                    "raw": "{\n  \"refreshToken\": \"<string>\"\n}",
                                     "options": {
                                         "raw": {
                                             "headerFamily": "json",
@@ -499,12 +412,8 @@
                         "name": "Get user profile",
                         "description": {},
                         "url": {
-                            "path": [
-                                "profile"
-                            ],
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
+                            "path": ["profile"],
+                            "host": ["{{baseUrl}}"],
                             "query": [],
                             "variable": []
                         },
@@ -525,12 +434,8 @@
                         "name": "Update user profile",
                         "description": {},
                         "url": {
-                            "path": [
-                                "profile"
-                            ],
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
+                            "path": ["profile"],
+                            "host": ["{{baseUrl}}"],
                             "query": [],
                             "variable": []
                         },

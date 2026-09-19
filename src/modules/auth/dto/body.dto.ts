@@ -1,8 +1,17 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from "class-validator";
+import {
+    IsEmail,
+    IsNotEmpty,
+    IsOptional,
+    IsString,
+    MinLength,
+} from "class-validator";
 
 export class LoginUserDto {
-    @ApiProperty({ example: "admin@example.com", description: "User email address" })
+    @ApiProperty({
+        example: "admin@example.com",
+        description: "User email address",
+    })
     @IsEmail()
     email: string;
 
@@ -23,12 +32,20 @@ export class AcceptInviteDto {
     @IsNotEmpty()
     userName: string;
 
-    @ApiProperty({ example: "password123", description: "Set new password", minLength: 6 })
+    @ApiProperty({
+        example: "password123",
+        description: "Set new password",
+        minLength: 6,
+    })
     @IsString()
     @MinLength(6)
     password: string;
 
-    @ApiProperty({ example: "01712345678", required: false, description: "Phone number (optional)" })
+    @ApiProperty({
+        example: "01712345678",
+        required: false,
+        description: "Phone number (optional)",
+    })
     @IsString()
     @IsOptional()
     phoneNumber?: string;
@@ -79,11 +96,4 @@ export class ResendOtpDto {
     @ApiProperty({ example: "user@example.com" })
     @IsEmail()
     email: string;
-}
-
-export class RefreshTokenDto {
-    @ApiProperty()
-    @IsString()
-    @IsNotEmpty()
-    refreshToken: string;
 }

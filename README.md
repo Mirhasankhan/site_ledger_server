@@ -73,9 +73,7 @@ Set at least the database and authentication values in `.env`:
 ```env
 DATABASE_URL="mongodb://localhost:27017/building-management-system"
 JWT_SECRET="replace-me"
-JWT_SECRET_EXPIRES_IN="1d"
-REFRESH_TOKEN_SECRET="replace-me-too"
-REFRESH_TOKEN_EXPIRES_IN="7d"
+JWT_SECRET_EXPIRES_IN="31536000" # seconds; 1 year
 PORT=5000
 NODE_ENV=development
 ```
@@ -118,7 +116,7 @@ All protected routes require a JWT bearer token unless otherwise noted.
 
 - `POST /auth/login`
 - `POST /auth/accept-invite`
-- Password reset, OTP, refresh-token, and password-management routes
+- Password reset, OTP, and password-management routes
 - `POST /invites` and invite management routes for Admins
 
 ### Projects and Rates

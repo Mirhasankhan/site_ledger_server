@@ -16,13 +16,11 @@
 
 //     async validate(
 //         accessToken: string,
-//         _refreshToken: string,
 //         profile: Profile,
 //     ) {
 //         return {
 //             user: profile,
 //             accessToken,
-//             refreshToken: _refreshToken,
 //         };
 //     }
 // }

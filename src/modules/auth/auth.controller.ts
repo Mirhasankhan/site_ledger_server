@@ -16,7 +16,6 @@ import {
     ChangePasswordDto,
     ForgotPasswordDto,
     LoginUserDto,
-    RefreshTokenDto,
     ResendOtpDto,
     ResetPasswordDto,
     VerifyOtpDto,
@@ -79,7 +78,6 @@ export class AuthController {
         });
     }
 
-
     @Post("change-password")
     @ApiOperation({ summary: "Change Password" })
     async changePassword(
@@ -118,20 +116,6 @@ export class AuthController {
         return ResponseService.formatResponse({
             statusCode: HttpStatus.OK,
             message: result.message,
-        });
-    }
-
-    @HttpCode(HttpStatus.OK)
-    @IsPublic()
-    @Post("refresh-token")
-    @ApiOperation({ summary: "Refresh Access Token" })
-    async refreshToken(@Body() payload: RefreshTokenDto) {
-        const result = await this.authService.refreshToken(payload);
-
-        return ResponseService.formatResponse({
-            statusCode: HttpStatus.OK,
-            message: result.message,
-            data: result.data,
         });
     }
 }

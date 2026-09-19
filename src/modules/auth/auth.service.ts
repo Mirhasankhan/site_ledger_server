@@ -14,7 +14,6 @@ import {
     ChangePasswordDto,
     ForgotPasswordDto,
     LoginUserDto,
-    RefreshTokenDto,
     ResendOtpDto,
     ResetPasswordDto,
     VerifyOtpDto,
@@ -115,16 +114,10 @@ export class AuthService {
             secret: config.jwt.jwt_secret,
             expiresIn: config.jwt.jwt_secret_expires_in,
         });
-        const refreshToken = this.jwtService.sign(jwtPayload, {
-            secret: config.jwt.refresh_token_secret,
-            expiresIn: config.jwt.refresh_token_expires_in,
-        });
-
         return {
             message: "Invite accepted successfully",
             data: {
                 accessToken,
-                refreshToken,
                 user: {
                     id: result.id,
                     email: result.email,
@@ -179,15 +172,9 @@ export class AuthService {
             secret: config.jwt.jwt_secret,
             expiresIn: config.jwt.jwt_secret_expires_in,
         });
-        const refreshToken = this.jwtService.sign(jwtPayload, {
-            secret: config.jwt.refresh_token_secret,
-            expiresIn: config.jwt.refresh_token_expires_in,
-        });
-
         return {
             message: "Login successful",
             data: {
-                refreshToken,
                 accessToken,
                 user: {
                     id: userData.id,
@@ -308,7 +295,10 @@ export class AuthService {
                 secret: config.jwt.reset_token_secret,
             });
         } catch {
-            throw new ApiError(HttpStatus.BAD_REQUEST, "Invalid or expired token");
+            throw new ApiError(
+                HttpStatus.BAD_REQUEST,
+                "Invalid or expired token",
+            );
         }
 
         const userData = await this.prisma.user.findUnique({
@@ -353,7 +343,10 @@ export class AuthService {
         );
 
         if (!passwordValid) {
-            throw new ApiError(HttpStatus.UNAUTHORIZED, "Incorrect old password");
+            throw new ApiError(
+                HttpStatus.UNAUTHORIZED,
+                "Incorrect old password",
+            );
         }
 
         const hashedPassword = await this.bcryptService.hash(
@@ -371,53 +364,5 @@ export class AuthService {
         });
 
         return { message: "Password changed successfully" };
-    }
-
-    async refreshToken(payload: RefreshTokenDto) {
-        if (!payload.refreshToken) {
-            throw new ApiError(
-                HttpStatus.BAD_REQUEST,
-                "refreshToken is required",
-            );
-        }
-
-        let decrypted: UserPayload | undefined;
-        try {
-            decrypted = this.jwtService.verify(payload.refreshToken, {
-                secret: config.jwt.refresh_token_secret,
-            });
-        } catch {
-            throw new ApiError(
-                HttpStatus.BAD_REQUEST,
-                "Refresh Token is Invalid or Expired",
-            );
-        }
-
-        const userData = await this.prisma.user.findUnique({
-            where: { id: decrypted.id },
-        });
-
-        if (!userData || userData.status !== UserStatus.ACTIVE) {
-            throw new ApiError(
-                HttpStatus.UNAUTHORIZED,
-                "Unauthenticated Request",
-            );
-        }
-
-        const jwtPayload: UserPayload = {
-            id: userData.id,
-            role: userData.role,
-            email: userData.email,
-        };
-
-        const accessToken = this.jwtService.sign(jwtPayload, {
-            secret: config.jwt.jwt_secret,
-            expiresIn: config.jwt.jwt_secret_expires_in,
-        });
-
-        return {
-            data: { accessToken },
-            message: "Access Token generated",
-        };
     }
 }
