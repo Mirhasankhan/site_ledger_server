@@ -1,0 +1,640 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ================== USERS & AUTH ==================
+
+model User {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  userName     String
+  email        String     @unique
+  password     String
+  profileImage String?
+  role         UserRole
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  managedProjects     Project[]          @relation("projectManagerRelation")
+  workerProfile       WorkerProfile?
+  sender              Room[]             @relation("user1Relation")
+  receiver            Room[]             @relation("user2Relation")
+  withdraws           Withdraw[]
+  payments            Payment[]          @relation("paymentWorkerRelation")
+  recordedPayments    Payment[]          @relation("paymentRecordedByRelation")
+  attendanceMarked    Attendance[]       @relation("attendanceMarkedByRelation")
+  attendanceVerified  Attendance[]       @relation("attendanceVerifiedByRelation")
+  leaveReviewed       LeaveRequest[]     @relation("leaveReviewedByRelation")
+  tasksCreated        Task[]             @relation("taskCreatedByRelation")
+  tasksAssigned       TaskAssignment[]
+  dailyReports        DailyReport[]      @relation("dailyReportSubmittedByRelation")
+  expensesRecorded    Expense[]          @relation("expenseRecordedByRelation")
+  expensesReviewed    Expense[]          @relation("expenseReviewedByRelation")
+  materialRequested   MaterialRequest[]  @relation("materialRequestedByRelation")
+  materialReviewed    MaterialRequest[]  @relation("materialReviewedByRelation")
+  materialUsageLogged MaterialUsage[]    @relation("materialUsageRecordedByRelation")
+  materialPurchased   MaterialPurchase[] @relation("materialPurchasedByRelation")
+
+  activityLogs ActivityLog[]
+
+  @@map("users")
+}
+
+model Invite {
+  id             String           @id @default(auto()) @map("_id") @db.ObjectId
+  email          String           @unique
+  role           UserRole
+  workerCategory TWorkerCategory?
+  token          String
+  status         InviteStatus     @default(Pending)
+  expiresAt      DateTime
+  createdAt      DateTime         @default(now())
+
+  @@map("invites")
+}
+
+model Otp {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String   @unique
+  otpCode   String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("otps")
+}
+
+// ================== PROJECT ==================
+
+model Project {
+  id                String        @id @default(auto()) @map("_id") @db.ObjectId
+  projectName       String        @unique
+  projectCode       String?       @unique
+  managerId         String        @db.ObjectId
+  address           String
+  description       String
+  projectImage      String
+  budget            Float         @default(0)
+  status            ProjectStatus @default(Ongoing)
+  standardWorkHours Float         @default(8)
+  startDate         DateTime?
+  endDate           DateTime?
+  last_Pay_Date     DateTime      @default(now())
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  manager          User                @relation("projectManagerRelation", fields: [managerId], references: [id])
+  workerRates      ProjectWorkerRate[]
+  workerProfiles   WorkerProfile[]
+  projectRooms     ProjectRoom[]
+  payments         Payment[]
+  attendances      Attendance[]
+  leaveRequests    LeaveRequest[]
+  tasks            Task[]
+  dailyReports     DailyReport[]
+  expenses         Expense[]
+  materialRequests MaterialRequest[]
+  materialUsages   MaterialUsage[]
+  activityLogs     ActivityLog[]
+
+  @@map("projects")
+}
+
+// Per-project, per-role daily rate — replaces the fixed fee columns.
+// Supports history: don't edit a row's rate, deactivate it and insert a new one.
+model ProjectWorkerRate {
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  projectId     String          @db.ObjectId
+  category      TWorkerCategory
+  dailyRate     Int
+  overtimeRate  Int?
+  isActive      Boolean         @default(true)
+  effectiveFrom DateTime        @default(now())
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@unique([projectId, category, effectiveFrom])
+  @@map("project_worker_rates")
+}
+
+// ================== WORKER ==================
+
+model WorkerProfile {
+  id                String          @id @default(auto()) @map("_id") @db.ObjectId
+  workerId          String          @unique @db.ObjectId
+  projectId         String?         @db.ObjectId
+  workerCategory    TWorkerCategory
+  phoneNumber       String?
+  presentAddress    String?
+  permanentAddress  String?
+  stripeAccountId   String?
+  dailyRate         Int             @default(0) // snapshot at assignment time
+  allTimeEarnings   Int             @default(0)
+  currentEarnings   Int             @default(0)
+  outstandingAmount Int             @default(0) // drives the worker-removal lock rule
+  assignedAt        DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  project Project? @relation(fields: [projectId], references: [id])
+  worker  User     @relation(fields: [workerId], references: [id])
+
+  attendances     Attendance[]
+  leaveRequests   LeaveRequest[]
+  taskAssignments TaskAssignment[]
+
+  @@map("worker_profiles")
+}
+
+// ================== ATTENDANCE & LEAVE ==================
+
+model Attendance {
+  id            String           @id @default(auto()) @map("_id") @db.ObjectId
+  workerId      String           @db.ObjectId
+  projectId     String           @db.ObjectId
+  date          DateTime         @db.Date
+  status        AttendanceStatus @default(Pending_Verification)
+  checkIn       DateTime?
+  checkOut      DateTime?
+  workingHours  Float?
+  overtimeHours Float            @default(0)
+  source        AttendanceSource @default(Manager)
+  selfCheckIn   DateTime?
+  selfCheckOut  DateTime?
+  notes         String? // required when status = Half_Day
+  markedById    String?          @db.ObjectId
+  verifiedById  String?          @db.ObjectId
+  verifiedAt    DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  worker     WorkerProfile @relation(fields: [workerId], references: [id])
+  project    Project       @relation(fields: [projectId], references: [id])
+  markedBy   User?         @relation("attendanceMarkedByRelation", fields: [markedById], references: [id])
+  verifiedBy User?         @relation("attendanceVerifiedByRelation", fields: [verifiedById], references: [id])
+
+  @@unique([workerId, projectId, date])
+  @@map("attendances")
+}
+
+model LeaveRequest {
+  id           String       @id @default(auto()) @map("_id") @db.ObjectId
+  workerId     String       @db.ObjectId
+  projectId    String       @db.ObjectId
+  leaveType    String
+  startDate    DateTime     @db.Date
+  endDate      DateTime     @db.Date
+  reason       String
+  status       TApplyStatus @default(Pending)
+  reviewedById String?      @db.ObjectId
+  reviewNote   String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  worker     WorkerProfile @relation(fields: [workerId], references: [id])
+  project    Project       @relation(fields: [projectId], references: [id])
+  reviewedBy User?         @relation("leaveReviewedByRelation", fields: [reviewedById], references: [id])
+
+  @@map("leave_requests")
+}
+
+// ================== TASKS ==================
+
+model Task {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  projectId   String       @db.ObjectId
+  title       String
+  description String?
+  priority    TaskPriority @default(Medium)
+  status      TaskStatus   @default(To_Do)
+  progress    Int          @default(0) // 0-100
+  startDate   DateTime?
+  dueDate     DateTime?
+  createdById String       @db.ObjectId
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  project     Project          @relation(fields: [projectId], references: [id])
+  createdBy   User             @relation("taskCreatedByRelation", fields: [createdById], references: [id])
+  assignments TaskAssignment[]
+  comments    TaskComment[]
+
+  @@map("tasks")
+}
+
+// join table: many workers can be assigned to one task
+model TaskAssignment {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  taskId     String   @db.ObjectId
+  workerId   String   @db.ObjectId
+  assignedAt DateTime @default(now())
+
+  task           Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  worker         WorkerProfile @relation(fields: [workerId], references: [id])
+  assignedByUser User          @relation(fields: [assignedById], references: [id])
+  assignedById   String        @db.ObjectId
+
+  @@unique([taskId, workerId])
+  @@map("task_assignments")
+}
+
+model TaskComment {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  taskId    String   @db.ObjectId
+  authorId  String   @db.ObjectId
+  content   String
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("task_comments")
+}
+
+// ================== DAILY REPORTS ==================
+
+model DailyReport {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  projectId      String   @db.ObjectId
+  date           DateTime @db.Date
+  weather        String?
+  presentWorkers Int      @default(0)
+  absentWorkers  Int      @default(0)
+  workCompleted  String?
+  workInProgress String?
+  issues         String?
+  delays         String?
+  safetyNotes    String?
+  photos         String[]
+  submittedById  String   @db.ObjectId
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project     Project @relation(fields: [projectId], references: [id])
+  submittedBy User    @relation("dailyReportSubmittedByRelation", fields: [submittedById], references: [id])
+
+  @@unique([projectId, date])
+  @@map("daily_reports")
+}
+
+// ================== MONEY: EXPENSES ==================
+
+model Expense {
+  id           String          @id @default(auto()) @map("_id") @db.ObjectId
+  projectId    String          @db.ObjectId
+  title        String
+  category     ExpenseCategory
+  amount       Float
+  date         DateTime        @default(now())
+  vendor       String?
+  reference    String?
+  receiptUrl   String?
+  notes        String?
+  status       ExpenseStatus   @default(Pending)
+  recordedById String          @db.ObjectId
+  reviewedById String?         @db.ObjectId
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  project    Project @relation(fields: [projectId], references: [id])
+  recordedBy User    @relation("expenseRecordedByRelation", fields: [recordedById], references: [id])
+  reviewedBy User?   @relation("expenseReviewedByRelation", fields: [reviewedById], references: [id])
+
+  @@map("expenses")
+}
+
+// ================== MATERIALS ==================
+
+model Material {
+  id           String           @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  category     MaterialCategory
+  unit         MaterialUnit
+  unitCost     Float
+  currentStock Float            @default(0)
+  minimumStock Float            @default(0)
+  supplier     String?
+  location     String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  requests  MaterialRequest[]
+  usages    MaterialUsage[]
+  purchases MaterialPurchase[]
+
+  @@map("materials")
+}
+
+model MaterialRequest {
+  id            String                @id @default(auto()) @map("_id") @db.ObjectId
+  materialId    String                @db.ObjectId
+  projectId     String                @db.ObjectId
+  requestedById String                @db.ObjectId
+  quantity      Float
+  requiredDate  DateTime?
+  reason        String?
+  status        MaterialRequestStatus @default(Pending)
+  reviewedById  String?               @db.ObjectId
+  reviewNote    String?
+  fulfilledAt   DateTime?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  material    Material @relation(fields: [materialId], references: [id])
+  project     Project  @relation(fields: [projectId], references: [id])
+  requestedBy User     @relation("materialRequestedByRelation", fields: [requestedById], references: [id])
+  reviewedBy  User?    @relation("materialReviewedByRelation", fields: [reviewedById], references: [id])
+
+  @@map("material_requests")
+}
+
+model MaterialUsage {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  materialId   String   @db.ObjectId
+  projectId    String   @db.ObjectId
+  quantityUsed Float
+  date         DateTime @db.Date
+  recordedById String   @db.ObjectId
+  notes        String?
+  createdAt    DateTime @default(now())
+
+  material   Material @relation(fields: [materialId], references: [id])
+  project    Project  @relation(fields: [projectId], references: [id])
+  recordedBy User     @relation("materialUsageRecordedByRelation", fields: [recordedById], references: [id])
+
+  @@map("material_usages")
+}
+
+model MaterialPurchase {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  materialId    String   @db.ObjectId
+  quantity      Float
+  unitCost      Float
+  totalCost     Float
+  supplier      String?
+  purchasedById String   @db.ObjectId
+  date          DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  material    Material @relation(fields: [materialId], references: [id])
+  purchasedBy User     @relation("materialPurchasedByRelation", fields: [purchasedById], references: [id])
+
+  @@map("material_purchases")
+}
+
+// ================== PAYMENTS (simplified payroll) ==================
+
+model Payment {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  workerId     String        @db.ObjectId
+  projectId    String        @db.ObjectId
+  amount       Int
+  method       PaymentMethod @default(Cash)
+  reference    String?
+  note         String?
+  recordedById String?       @db.ObjectId
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  worker     User    @relation("paymentWorkerRelation", fields: [workerId], references: [id])
+  project    Project @relation(fields: [projectId], references: [id])
+  recordedBy User?   @relation("paymentRecordedByRelation", fields: [recordedById], references: [id])
+
+  @@map("payments")
+}
+
+model Withdraw {
+  id        String       @id @default(auto()) @map("_id") @db.ObjectId
+  workerId  String       @db.ObjectId
+  amount    Int
+  status    TApplyStatus @default(Pending)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  worker User @relation(fields: [workerId], references: [id])
+
+  @@map("withdraws")
+}
+
+// ================== CHAT ==================
+
+model Room {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  senderId   String?  @db.ObjectId
+  receiverId String?  @db.ObjectId
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user1   User?     @relation("user1Relation", fields: [senderId], references: [id], onDelete: Cascade)
+  user2   User?     @relation("user2Relation", fields: [receiverId], references: [id], onDelete: Cascade)
+  message Message[]
+
+  @@unique([senderId, receiverId])
+  @@map("rooms")
+}
+
+model ProjectRoom {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  projectId String   @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project  Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messages ProjectMessage[]
+
+  @@map("project_rooms")
+}
+
+model Message {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  roomId    String   @db.ObjectId
+  user1Id   String   @db.ObjectId
+  user2Id   String   @db.ObjectId
+  content   String?
+  fileUrl   String[]
+  user1Read Boolean  @default(false)
+  user2Read Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+// project group chat — separate from 1:1 Message so system messages
+// (e.g. "Rahim was added to the project") can post here without a fake sender
+model ProjectMessage {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  projectRoomId String   @db.ObjectId
+  authorId      String?  @db.ObjectId // null = system message
+  content       String
+  fileUrl       String[]
+  isSystem      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  projectRoom ProjectRoom @relation(fields: [projectRoomId], references: [id], onDelete: Cascade)
+
+  @@map("project_messages")
+}
+
+// ================== ACTIVITY LOG (feeds audit log, activity feed, system chat) ==================
+
+model ActivityLog {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  projectId  String?  @db.ObjectId
+  actorId    String   @db.ObjectId
+  action     String // e.g. "TASK_CREATED", "WORKER_ADDED", "PAYMENT_RECORDED"
+  entityType String // e.g. "Task", "WorkerProfile", "Payment"
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  project Project? @relation(fields: [projectId], references: [id])
+  actor   User     @relation(fields: [actorId], references: [id])
+
+  @@map("activity_logs")
+}
+
+// ================== ENUMS ==================
+
+enum TApplyStatus {
+  Pending
+  Accepted
+  Rejected
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+  DELETED
+}
+
+enum InviteStatus {
+  Pending
+  Accepted
+  Expired
+  Cancelled
+}
+
+enum ProjectStatus {
+  Ongoing
+  Paused
+  Completed
+}
+
+enum Gender {
+  Male
+  Female
+  Other
+}
+
+enum TWorkerCategory {
+  Plumber
+  Electrician
+  Carpenter
+  Painter
+  Cleaner
+  Mechanic
+  HVAC_Technician
+  Mason
+  Welder
+}
+
+enum UserRole {
+  ADMIN
+  WORKER
+  SITE_MANAGER
+}
+
+enum AttendanceStatus {
+  Present
+  Absent
+  Half_Day
+  Leave
+  Holiday
+  Pending_Verification
+}
+
+enum AttendanceSource {
+  Manager
+  Self
+  QR
+}
+
+enum TaskStatus {
+  To_Do
+  In_Progress
+  Blocked
+  Completed
+  Cancelled
+}
+
+enum TaskPriority {
+  Low
+  Medium
+  High
+  Urgent
+}
+
+enum ExpenseCategory {
+  Labor
+  Materials
+  Transportation
+  Equipment_Rental
+  Food
+  Accommodation
+  Miscellaneous
+}
+
+enum ExpenseStatus {
+  Pending
+  Approved
+  Rejected
+  Paid
+}
+
+enum MaterialCategory {
+  Cement
+  Brick
+  Sand
+  Steel
+  Paint
+  Tiles
+  Wood
+  Pipes
+  Electrical
+  Other
+}
+
+enum MaterialUnit {
+  Bag
+  Piece
+  Kg
+  Ton
+  Liter
+  Meter
+  CubicFeet
+  Unit
+}
+
+enum MaterialRequestStatus {
+  Pending
+  Approved
+  Rejected
+  Fulfilled
+  Cancelled
+}
+
+enum PaymentMethod {
+  Cash
+  Bank_Transfer
+  Mobile_Banking
+  Other
+}
