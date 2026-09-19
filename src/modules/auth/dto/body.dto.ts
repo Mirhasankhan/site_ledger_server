@@ -27,10 +27,15 @@ export class AcceptInviteDto {
     @IsNotEmpty()
     token: string;
 
-    @ApiProperty({ example: "Rahim Ahmed", description: "User full name" })
+    @ApiProperty({
+        example: "Rahim Ahmed",
+        description:
+            "Optional user full name; email local-part is used when omitted",
+        required: false,
+    })
     @IsString()
-    @IsNotEmpty()
-    userName: string;
+    @IsOptional()
+    userName?: string;
 
     @ApiProperty({
         example: "password123",

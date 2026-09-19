@@ -155,6 +155,7 @@ export class InviteService {
             message: "Invite token verified",
             data: {
                 email: invite.email,
+                name: null,
                 role: invite.role,
                 workerCategory: invite.workerCategory,
                 expiresAt: invite.expiresAt,

@@ -78,7 +78,8 @@ export class AuthService {
         const result = await this.prisma.$transaction(async (tx) => {
             const user = await tx.user.create({
                 data: {
-                    userName: payload.userName,
+                    userName:
+                        payload.userName?.trim() || invite.email.split("@")[0],
                     email: invite.email,
                     password: hashedPassword,
                     role: invite.role,
