@@ -11,17 +11,26 @@ import {
 } from "class-validator";
 
 export class CreateProjectDto {
-    @ApiProperty({ example: "Metro Rail Phase 2", description: "Name of the project" })
+    @ApiProperty({
+        example: "Metro Rail Phase 2",
+        description: "Name of the project",
+    })
     @IsString()
     @IsNotEmpty()
     projectName: string;
 
-    @ApiPropertyOptional({ example: "MRP-02", description: "Unique project code" })
+    @ApiPropertyOptional({
+        example: "MRP-02",
+        description: "Unique project code",
+    })
     @IsOptional()
     @IsString()
     projectCode?: string;
 
-    @ApiProperty({ description: "ID of the User with SITE_MANAGER role assigned to this project" })
+    @ApiProperty({
+        description:
+            "ID of the User with SITE_MANAGER role assigned to this project",
+    })
     @IsString()
     @IsNotEmpty()
     managerId: string;
@@ -31,17 +40,25 @@ export class CreateProjectDto {
     @IsNotEmpty()
     address: string;
 
-    @ApiProperty({ example: "Construction of metro overpass and station infrastructure." })
+    @ApiProperty({
+        example: "Construction of metro overpass and station infrastructure.",
+    })
     @IsString()
     @IsNotEmpty()
     description: string;
 
-    @ApiProperty({ example: "metro_site.jpg", description: "Project banner or main photo" })
+    @ApiPropertyOptional({
+        example: "metro_site.jpg",
+        description: "Project banner or main photo URL",
+    })
+    @IsOptional()
     @IsString()
-    @IsNotEmpty()
-    projectImage: string;
+    projectImage?: string;
 
-    @ApiPropertyOptional({ example: 5000000, description: "Total project budget" })
+    @ApiPropertyOptional({
+        example: 5000000,
+        description: "Total project budget",
+    })
     @IsOptional()
     @IsNumber()
     @Min(0)
@@ -56,7 +73,11 @@ export class CreateProjectDto {
     @IsEnum(ProjectStatus)
     status?: ProjectStatus;
 
-    @ApiPropertyOptional({ example: 8, default: 8, description: "Standard work hours per day" })
+    @ApiPropertyOptional({
+        example: 8,
+        default: 8,
+        description: "Standard work hours per day",
+    })
     @IsOptional()
     @IsNumber()
     @Min(1)

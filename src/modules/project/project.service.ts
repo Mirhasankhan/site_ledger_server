@@ -6,15 +6,21 @@ import { ApiError } from "@/common/errors/api_error";
 import { ExpenseStatus, Prisma, UserRole, UserStatus } from "@prisma/client";
 import QueryBuilder from "@/common/utils/queryBuilder";
 import { ActivityLoggerService } from "@/core/services/activity/activity_logger.service";
+import { FileService } from "@/core/services/files/cloudinary.service";
 
 @Injectable()
 export class ProjectService {
     constructor(
         private prisma: PrismaService,
         private activityLogger: ActivityLoggerService,
+        private fileService: FileService,
     ) {}
 
-    async createProject(payload: CreateProjectDto, user: UserPayload) {
+    async createProject(
+        payload: CreateProjectDto,
+        user: UserPayload,
+        file?: Express.Multer.File,
+    ) {
         const manager = await this.prisma.user.findUnique({
             where: { id: payload.managerId },
         });
@@ -56,6 +62,27 @@ export class ProjectService {
             }
         }
 
+        let projectImageUrl = payload.projectImage;
+
+        if (file) {
+            projectImageUrl = await this.fileService.uploadToCloudinary(file);
+        } else if (
+            payload.projectImage &&
+            !payload.projectImage.startsWith("http://") &&
+            !payload.projectImage.startsWith("https://")
+        ) {
+            projectImageUrl = await this.fileService.uploadToCloudinary(
+                payload.projectImage,
+            );
+        }
+
+        if (!projectImageUrl) {
+            throw new ApiError(
+                HttpStatus.BAD_REQUEST,
+                "Project image is required",
+            );
+        }
+
         const project = await this.prisma.$transaction(async (tx) => {
             const created = await tx.project.create({
                 data: {
@@ -64,11 +91,13 @@ export class ProjectService {
                     managerId: payload.managerId,
                     address: payload.address,
                     description: payload.description,
-                    projectImage: payload.projectImage,
+                    projectImage: projectImageUrl,
                     budget: payload.budget ?? 0,
                     status: payload.status,
                     standardWorkHours: payload.standardWorkHours ?? 8,
-                    startDate: payload.startDate ? new Date(payload.startDate) : null,
+                    startDate: payload.startDate
+                        ? new Date(payload.startDate)
+                        : null,
                     endDate: payload.endDate ? new Date(payload.endDate) : null,
                 },
             });
@@ -163,6 +192,42 @@ export class ProjectService {
         };
     }
 
+    async fetchAvailableSiteManagers() {
+        const siteManagers = await this.prisma.user.findMany({
+            where: {
+                role: UserRole.SITE_MANAGER,
+                status: UserStatus.ACTIVE,
+            },
+            select: {
+                id: true,
+                userName: true,
+                email: true,
+                profileImage: true,
+                status: true,
+                managedProjects: {
+                    select: {
+                        id: true,
+                        projectName: true,
+                        status: true,
+                    },
+                },
+                _count: {
+                    select: {
+                        managedProjects: true,
+                    },
+                },
+            },
+            orderBy: {
+                userName: "asc",
+            },
+        });
+
+        return {
+            message: "Site managers fetched successfully",
+            data: siteManagers,
+        };
+    }
+
     async fetchSingleProject(id: string, user: UserPayload) {
         const project = await this.prisma.project.findUnique({
             where: { id },
@@ -192,7 +257,10 @@ export class ProjectService {
             throw new ApiError(HttpStatus.NOT_FOUND, "Project not found");
         }
 
-        if (user.role === UserRole.SITE_MANAGER && project.managerId !== user.id) {
+        if (
+            user.role === UserRole.SITE_MANAGER &&
+            project.managerId !== user.id
+        ) {
             throw new ApiError(
                 HttpStatus.FORBIDDEN,
                 "You do not have access to view this project",
@@ -217,7 +285,12 @@ export class ProjectService {
         };
     }
 
-    async updateProject(id: string, payload: UpdateProjectDto, user: UserPayload) {
+    async updateProject(
+        id: string,
+        payload: UpdateProjectDto,
+        user: UserPayload,
+        file?: Express.Multer.File,
+    ) {
         const project = await this.prisma.project.findUnique({
             where: { id },
         });
@@ -239,7 +312,10 @@ export class ProjectService {
                     "Site Manager cannot reassign the project manager",
                 );
             }
-            if (payload.budget !== undefined && payload.budget !== project.budget) {
+            if (
+                payload.budget !== undefined &&
+                payload.budget !== project.budget
+            ) {
                 throw new ApiError(
                     HttpStatus.FORBIDDEN,
                     "Only Admin can modify project budget",
@@ -251,7 +327,11 @@ export class ProjectService {
             const newManager = await this.prisma.user.findUnique({
                 where: { id: payload.managerId },
             });
-            if (!newManager || newManager.role !== UserRole.SITE_MANAGER || newManager.status !== UserStatus.ACTIVE) {
+            if (
+                !newManager ||
+                newManager.role !== UserRole.SITE_MANAGER ||
+                newManager.status !== UserStatus.ACTIVE
+            ) {
                 throw new ApiError(
                     HttpStatus.BAD_REQUEST,
                     "The specified manager was not found or is not an active Site Manager",
@@ -259,18 +339,44 @@ export class ProjectService {
             }
         }
 
+        let projectImageUrl = payload.projectImage;
+
+        if (file) {
+            projectImageUrl = await this.fileService.uploadToCloudinary(file);
+        } else if (
+            payload.projectImage &&
+            !payload.projectImage.startsWith("http://") &&
+            !payload.projectImage.startsWith("https://")
+        ) {
+            projectImageUrl = await this.fileService.uploadToCloudinary(
+                payload.projectImage,
+            );
+        }
+
         const updateData: Prisma.ProjectUpdateInput = {
             ...(payload.projectName && { projectName: payload.projectName }),
-            ...(payload.projectCode !== undefined && { projectCode: payload.projectCode }),
+            ...(payload.projectCode !== undefined && {
+                projectCode: payload.projectCode,
+            }),
             ...(payload.address && { address: payload.address }),
             ...(payload.description && { description: payload.description }),
-            ...(payload.projectImage && { projectImage: payload.projectImage }),
+            ...(projectImageUrl && { projectImage: projectImageUrl }),
             ...(payload.budget !== undefined && { budget: payload.budget }),
             ...(payload.status && { status: payload.status }),
-            ...(payload.standardWorkHours !== undefined && { standardWorkHours: payload.standardWorkHours }),
-            ...(payload.startDate !== undefined && { startDate: payload.startDate ? new Date(payload.startDate) : null }),
-            ...(payload.endDate !== undefined && { endDate: payload.endDate ? new Date(payload.endDate) : null }),
-            ...(payload.managerId && { manager: { connect: { id: payload.managerId } } }),
+            ...(payload.standardWorkHours !== undefined && {
+                standardWorkHours: payload.standardWorkHours,
+            }),
+            ...(payload.startDate !== undefined && {
+                startDate: payload.startDate
+                    ? new Date(payload.startDate)
+                    : null,
+            }),
+            ...(payload.endDate !== undefined && {
+                endDate: payload.endDate ? new Date(payload.endDate) : null,
+            }),
+            ...(payload.managerId && {
+                manager: { connect: { id: payload.managerId } },
+            }),
         };
 
         const updated = await this.prisma.project.update({
@@ -324,14 +430,22 @@ export class ProjectService {
     async fetchBudgetSummary(id: string, user: UserPayload) {
         const project = await this.prisma.project.findUnique({
             where: { id },
-            select: { id: true, projectName: true, budget: true, managerId: true },
+            select: {
+                id: true,
+                projectName: true,
+                budget: true,
+                managerId: true,
+            },
         });
 
         if (!project) {
             throw new ApiError(HttpStatus.NOT_FOUND, "Project not found");
         }
 
-        if (user.role === UserRole.SITE_MANAGER && project.managerId !== user.id) {
+        if (
+            user.role === UserRole.SITE_MANAGER &&
+            project.managerId !== user.id
+        ) {
             throw new ApiError(
                 HttpStatus.FORBIDDEN,
                 "Access denied to budget summary for this project",
@@ -356,7 +470,9 @@ export class ProjectService {
                 _sum: { amount: true },
                 where: {
                     projectId: id,
-                    status: { in: [ExpenseStatus.Approved, ExpenseStatus.Paid] },
+                    status: {
+                        in: [ExpenseStatus.Approved, ExpenseStatus.Paid],
+                    },
                 },
             });
             return result._sum.amount ?? 0;
@@ -408,7 +524,11 @@ export class ProjectService {
         };
     }
 
-    async fetchProjectActivity(id: string, query: Record<string, any>, user: UserPayload) {
+    async fetchProjectActivity(
+        id: string,
+        query: Record<string, any>,
+        user: UserPayload,
+    ) {
         const project = await this.prisma.project.findUnique({
             where: { id },
             select: { id: true, managerId: true },
@@ -419,8 +539,14 @@ export class ProjectService {
         }
 
         // Rule #1 scoping
-        if (user.role === UserRole.SITE_MANAGER && project.managerId !== user.id) {
-            throw new ApiError(HttpStatus.FORBIDDEN, "Access denied to this project's activity log");
+        if (
+            user.role === UserRole.SITE_MANAGER &&
+            project.managerId !== user.id
+        ) {
+            throw new ApiError(
+                HttpStatus.FORBIDDEN,
+                "Access denied to this project's activity log",
+            );
         }
 
         if (user.role === UserRole.WORKER) {
@@ -428,7 +554,10 @@ export class ProjectService {
                 where: { workerId: user.id },
             });
             if (workerProfile?.projectId !== project.id) {
-                throw new ApiError(HttpStatus.FORBIDDEN, "Access denied to this project's activity log");
+                throw new ApiError(
+                    HttpStatus.FORBIDDEN,
+                    "Access denied to this project's activity log",
+                );
             }
         }
 
@@ -449,7 +578,13 @@ export class ProjectService {
                 skip,
                 take: limit,
                 include: {
-                    actor: { select: { id: true, userName: true, profileImage: true } },
+                    actor: {
+                        select: {
+                            id: true,
+                            userName: true,
+                            profileImage: true,
+                        },
+                    },
                 },
             }),
             this.prisma.activityLog.count({ where }),
@@ -470,7 +605,10 @@ export class ProjectService {
     async fetchGlobalActivity(query: Record<string, any>, user: UserPayload) {
         // Admin-only global audit feed
         if (user.role !== UserRole.ADMIN) {
-            throw new ApiError(HttpStatus.FORBIDDEN, "Only Admin can access the global activity log");
+            throw new ApiError(
+                HttpStatus.FORBIDDEN,
+                "Only Admin can access the global activity log",
+            );
         }
 
         const page = parseInt(query.page ?? "1", 10);
@@ -490,7 +628,13 @@ export class ProjectService {
                 skip,
                 take: limit,
                 include: {
-                    actor: { select: { id: true, userName: true, profileImage: true } },
+                    actor: {
+                        select: {
+                            id: true,
+                            userName: true,
+                            profileImage: true,
+                        },
+                    },
                     project: { select: { id: true, projectName: true } },
                 },
             }),

@@ -13,6 +13,7 @@ import { ChatModule } from "@/modules/chat/chat.module";
 import { LeaveModule } from "@/modules/leave/leave.module";
 import { GlobalExceptionFilter } from "@/common/filters/global_exception";
 import { Module } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
 import { APP_FILTER, APP_GUARD } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { AppController } from "./app.controller";
@@ -23,6 +24,7 @@ import { CommonModule } from "@/common/common.module";
 
 @Module({
     imports: [
+        ConfigModule.forRoot({ isGlobal: true }),
         ServeStaticModule.forRoot({
             rootPath: join(__dirname, "..", "..", "uploads"),
             serveRoot: "/uploads",
