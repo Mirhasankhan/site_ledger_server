@@ -9,14 +9,21 @@ export interface EmailOptions {
     html?: string;
 }
 
-export const sendEmail = async ({ email, subject, html }: EmailOptions) => {
+export const sendEmail = async ({
+    email,
+    subject,
+    html,
+    text,
+}: EmailOptions) => {
     try {
-        return;
-        // return nodemailEmailSender({ email, subject, html });
+        return await nodemailEmailSender({
+            email,
+            subject,
+            html: html || "",
+            text,
+        });
     } catch (error) {
-        console.log("Email Send Failed: ", (error as Error).message);
+        console.error("Email Send Failed: ", (error as Error).message);
+        throw error;
     }
-
-    // Implementation for sending email (e.g., using Nodemailer, AWS SES, or SendGrid)
-    // await transporter.sendMail(mailOptions);
 };

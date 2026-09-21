@@ -25,7 +25,7 @@ const nodemailEmailSender = async ({
     text?: string;
 }) => {
     const mailOptions = {
-        from: `"${config.company_name}" <${config.smtp.sender}>`,
+        from: `"${config.company_name || "Siteledger"}" <${config.smtp.sender || config.smtp.user}>`,
         to: email,
         subject,
         html,
@@ -36,9 +36,10 @@ const nodemailEmailSender = async ({
     try {
         const info = await transporter.sendMail(mailOptions);
         console.log("Email sent: " + info.response);
+        return info;
     } catch (error) {
         console.error("Error sending email:", error);
-        // throw new ApiError(500, "Error sending email");
+        throw error;
     }
 };
 

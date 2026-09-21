@@ -7,6 +7,12 @@ import { InviteStatus, Prisma, UserRole } from "@prisma/client";
 import { randomBytes } from "crypto";
 import QueryBuilder from "@/common/utils/queryBuilder";
 import { ActivityLoggerService } from "@/core/services/activity/activity_logger.service";
+import { sendEmail } from "@/core/services/email";
+import config from "@/config";
+import {
+    generateInviteEmailHtml,
+    generateInviteEmailText,
+} from "./invite.template";
 
 @Injectable()
 export class InviteService {
@@ -75,13 +81,52 @@ export class InviteService {
             },
         });
 
+        const companyName = config.company_name || "Siteledger";
+        const frontendUrl = config.url.frontend || "http://localhost:3000";
+        const inviteLink = `${frontendUrl}/accept-invite?token=${token}`;
+        const formattedRole =
+            payload.role === UserRole.SITE_MANAGER
+                ? "Site Manager"
+                : payload.role === UserRole.WORKER
+                  ? "Worker"
+                  : "Admin";
+
+        const emailHtml = generateInviteEmailHtml({
+            email: invite.email,
+            role: formattedRole,
+            workerCategory: payload.workerCategory,
+            inviteLink,
+        });
+
+        const emailText = generateInviteEmailText({
+            email: invite.email,
+            role: formattedRole,
+            workerCategory: payload.workerCategory,
+            inviteLink,
+        });
+
+        try {
+            await sendEmail({
+                email: invite.email,
+                subject: `Invitation to join ${companyName} as ${formattedRole}`,
+                html: emailHtml,
+                text: emailText,
+            });
+        } catch (emailError) {
+            console.error("Failed to send invitation email:", emailError);
+            throw new ApiError(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                `Invitation created but failed to send email to ${invite.email}: ${(emailError as Error).message}`,
+            );
+        }
+
         return {
-            message: "Invite created successfully",
+            message: `Invitation email sent successfully to ${invite.email}`,
             data: {
                 id: invite.id,
                 email: invite.email,
                 role: invite.role,
-                token: invite.token,
+                workerCategory: invite.workerCategory,
                 expiresAt: invite.expiresAt,
             },
         };
