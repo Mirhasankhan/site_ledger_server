@@ -129,6 +129,69 @@ export class WorkerController {
 
     // ── Withdraw Routes ────────────────────────────────────────────────────
 
+    @Get("withdraws/all")
+    @Roles(UserRole.ADMIN, UserRole.SITE_MANAGER)
+    @ApiOperation({
+        summary: "List all withdrawal requests for admin and site manager",
+    })
+    async getAllWithdraws(@Req() req: Request) {
+        const user = req.user as UserPayload;
+        const result = await this.workerService.getAllWithdraws(
+            req.query,
+            user,
+        );
+
+        return ResponseService.formatResponse({
+            statusCode: HttpStatus.OK,
+            message: result.message,
+            data: result.data,
+        });
+    }
+
+    @Get(":id/stripe-connect/status")
+    @Roles(UserRole.ADMIN, UserRole.WORKER)
+    @ApiOperation({
+        summary: "Get worker Stripe connected account status",
+    })
+    async getStripeConnectStatus(
+        @Param("id") id: string,
+        @Req() req: Request,
+    ) {
+        const user = req.user as UserPayload;
+        const result = await this.workerService.getStripeConnectStatus(
+            id,
+            user,
+        );
+
+        return ResponseService.formatResponse({
+            statusCode: HttpStatus.OK,
+            message: result.message,
+            data: result.data,
+        });
+    }
+
+    @Post(":id/stripe-connect/onboard")
+    @Roles(UserRole.WORKER)
+    @ApiOperation({
+        summary: "Generate Stripe connected account onboarding link",
+    })
+    async getStripeOnboardingLink(
+        @Param("id") id: string,
+        @Req() req: Request,
+    ) {
+        const user = req.user as UserPayload;
+        const result = await this.workerService.getStripeOnboardingLink(
+            id,
+            user,
+        );
+
+        return ResponseService.formatResponse({
+            statusCode: HttpStatus.OK,
+            message: result.message,
+            data: result.data,
+        });
+    }
+
     @Post(":id/withdraws")
     @Roles(UserRole.WORKER)
     @ApiOperation({ summary: "Worker submits a withdrawal request" })
@@ -171,6 +234,7 @@ export class WorkerController {
             pagination: result.pagination,
         });
     }
+
 
     @Patch(":id/withdraws/:withdrawId/review")
     @Roles(UserRole.ADMIN, UserRole.SITE_MANAGER)

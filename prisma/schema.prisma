@@ -410,12 +410,14 @@ model Payment {
 }
 
 model Withdraw {
-  id        String       @id @default(auto()) @map("_id") @db.ObjectId
-  workerId  String       @db.ObjectId
-  amount    Int
-  status    TApplyStatus @default(Pending)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id         String       @id @default(auto()) @map("_id") @db.ObjectId
+  workerId   String       @db.ObjectId
+  amount     Int
+  status     TApplyStatus @default(Pending)
+  transferId String?
+  note       String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 
   worker User @relation(fields: [workerId], references: [id])
 

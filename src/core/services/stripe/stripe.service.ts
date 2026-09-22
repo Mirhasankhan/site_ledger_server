@@ -7,10 +7,21 @@ export class StripeService {
     private stripe: Stripe;
 
     constructor() {
-        this.stripe = new Stripe(config.stripe.secret_key, {
+        const apiKey =
+            config.stripe.secret_key || "sk_test_placeholder_key_not_configured";
+        this.stripe = new Stripe(apiKey, {
             apiVersion: "2025-08-27.basil", // Use the latest API version
         });
     }
+
+    private ensureConfigured() {
+        if (!config.stripe.secret_key) {
+            throw new Error(
+                "Stripe secret key is not configured. Please add STRIPE_SECRET_KEY to your .env file.",
+            );
+        }
+    }
+
 
     async createPaymentIntent({
         amount,
@@ -56,6 +67,61 @@ export class StripeService {
             },
         });
     }
+
+    async createConnectAccount(
+        email: string,
+        metadata?: Record<string, string>,
+    ): Promise<Stripe.Account> {
+        this.ensureConfigured();
+        return await this.stripe.accounts.create({
+            type: "express",
+            email,
+            capabilities: {
+                transfers: { requested: true },
+            },
+            business_type: "individual",
+            metadata,
+        });
+    }
+
+    async createAccountLink(
+        stripeAccountId: string,
+        returnUrl: string,
+        refreshUrl: string,
+    ): Promise<string> {
+        this.ensureConfigured();
+        const link = await this.stripe.accountLinks.create({
+            account: stripeAccountId,
+            refresh_url: refreshUrl,
+            return_url: returnUrl,
+            type: "account_onboarding",
+        });
+        return link.url;
+    }
+
+    async getAccountStatus(stripeAccountId: string) {
+        this.ensureConfigured();
+        const account = await this.stripe.accounts.retrieve(stripeAccountId);
+        return {
+            id: account.id,
+            detailsSubmitted: account.details_submitted ?? false,
+            payoutsEnabled: account.payouts_enabled ?? false,
+            chargesEnabled: account.charges_enabled ?? false,
+        };
+    }
+
+    async transferMoneyToConnectedWorker(stripeAccountId: string, amount: number) {
+        this.ensureConfigured();
+        const transfer = await this.stripe.transfers.create({
+            amount: Math.round(amount * 100),
+            currency: "usd",
+            destination: stripeAccountId,
+        });
+
+
+        return transfer;
+    }
+
 
     async createCharge(data: Stripe.ChargeCreateParams) {
         return await this.stripe.charges.create(data);

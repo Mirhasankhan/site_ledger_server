@@ -25,14 +25,14 @@ export class CreatePaymentDto {
     @IsPositive()
     amount: number;
 
-    @ApiProperty({
+    @ApiPropertyOptional({
         enum: PaymentMethod,
-        description: `Payment method: ${Object.values(PaymentMethod).join(", ")}`,
-        example: PaymentMethod.Cash,
+        description: `Payment method: ${Object.values(PaymentMethod).join(", ")} (defaults to Bank_Transfer / Platform Earning Credit)`,
+        example: PaymentMethod.Bank_Transfer,
     })
     @IsEnum(PaymentMethod)
-    @IsNotEmpty()
-    method: PaymentMethod;
+    @IsOptional()
+    method?: PaymentMethod;
 
     @ApiPropertyOptional({ example: "TXN-998877", description: "Bank/mobile-banking reference" })
     @IsOptional()

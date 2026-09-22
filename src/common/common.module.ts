@@ -3,6 +3,7 @@ import { BcryptService } from "./utils/bcrypt.service";
 import { PrismaService } from "@/core/services/prisma/prisma.service";
 import { ActivityLoggerService } from "@/core/services/activity/activity_logger.service";
 import { FileService } from "@/core/services/files/cloudinary.service";
+import { StripeService } from "@/core/services/stripe/stripe.service";
 
 @Global()
 @Module({
@@ -11,7 +12,15 @@ import { FileService } from "@/core/services/files/cloudinary.service";
         PrismaService,
         ActivityLoggerService,
         FileService,
+        StripeService,
     ],
-    exports: [BcryptService, PrismaService, ActivityLoggerService, FileService],
+    exports: [
+        BcryptService,
+        PrismaService,
+        ActivityLoggerService,
+        FileService,
+        StripeService,
+    ],
 })
 export class CommonModule {}
+

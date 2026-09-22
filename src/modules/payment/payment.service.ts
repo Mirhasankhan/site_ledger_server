@@ -3,7 +3,7 @@ import { PrismaService } from "@/core/services/prisma/prisma.service";
 import { CreatePaymentDto } from "./dto/body.dto";
 import { UserPayload } from "@/common/guards/auth.guard";
 import { ApiError } from "@/common/errors/api_error";
-import { Prisma, UserRole } from "@prisma/client";
+import { PaymentMethod, Prisma, UserRole } from "@prisma/client";
 import QueryBuilder from "@/common/utils/queryBuilder";
 import { ActivityLoggerService } from "@/core/services/activity/activity_logger.service";
 
@@ -66,7 +66,7 @@ export class PaymentService {
                     workerId: payload.workerId,
                     projectId: payload.projectId,
                     amount: payload.amount,
-                    method: payload.method,
+                    method: payload.method ?? PaymentMethod.Bank_Transfer,
                     reference: payload.reference ?? null,
                     note: payload.note ?? null,
                     recordedById: user.id,

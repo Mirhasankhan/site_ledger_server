@@ -15,13 +15,17 @@ import {
 } from "@prisma/client";
 import QueryBuilder from "@/common/utils/queryBuilder";
 import { ActivityLoggerService } from "@/core/services/activity/activity_logger.service";
+import { StripeService } from "@/core/services/stripe/stripe.service";
+import config from "@/config";
 
 @Injectable()
 export class WorkerService {
     constructor(
         private prisma: PrismaService,
         private activityLogger: ActivityLoggerService,
+        private stripeService: StripeService,
     ) {}
+
 
     async fetchAllWorkers(query: Record<string, any>, user: UserPayload) {
         const scopedQuery = { ...query };
@@ -208,6 +212,7 @@ export class WorkerService {
             where: {
                 OR: [{ id: workerIdentifier }, { workerId: workerIdentifier }],
             },
+            include: { worker: true },
         });
 
         if (!workerProfile) {
@@ -225,10 +230,88 @@ export class WorkerService {
             );
         }
 
+        if (payload.amount <= 0) {
+            throw new ApiError(
+                HttpStatus.BAD_REQUEST,
+                "Withdrawal amount must be greater than zero",
+            );
+        }
+
         if (payload.amount > workerProfile.currentEarnings) {
             throw new ApiError(
                 HttpStatus.BAD_REQUEST,
                 `Withdrawal amount exceeds current earnings (${workerProfile.currentEarnings})`,
+            );
+        }
+
+        const frontendUrl = config.url.frontend || "http://localhost:3000";
+        const refreshUrl = `${frontendUrl}/worker/earnings?stripe=refresh`;
+        const returnUrl = `${frontendUrl}/worker/earnings?stripe=return`;
+
+        // Check if worker has connected their Stripe account
+        if (!workerProfile.stripeAccountId) {
+            try {
+                const account = await this.stripeService.createConnectAccount(
+                    workerProfile.worker.email,
+                    {
+                        workerId: workerProfile.workerId,
+                        workerProfileId: workerProfile.id,
+                    },
+                );
+
+                await this.prisma.workerProfile.update({
+                    where: { id: workerProfile.id },
+                    data: { stripeAccountId: account.id },
+                });
+
+                const onboardingUrl = await this.stripeService.createAccountLink(
+                    account.id,
+                    returnUrl,
+                    refreshUrl,
+                );
+
+                return {
+                    message:
+                        "Please complete your Stripe account onboarding to enable payouts",
+                    data: {
+                        requiresOnboarding: true,
+                        onboardingUrl,
+                    },
+                };
+            } catch (err: any) {
+                throw new ApiError(
+                    HttpStatus.BAD_GATEWAY,
+                    `Stripe Connect error: ${err.message || "Failed to create Stripe account"}`,
+                );
+            }
+        }
+
+        // Verify account onboarding status with Stripe
+        try {
+            const status = await this.stripeService.getAccountStatus(
+                workerProfile.stripeAccountId,
+            );
+
+            if (!status.detailsSubmitted) {
+                const onboardingUrl = await this.stripeService.createAccountLink(
+                    workerProfile.stripeAccountId,
+                    returnUrl,
+                    refreshUrl,
+                );
+
+                return {
+                    message:
+                        "Please complete your Stripe account onboarding to request withdrawals",
+                    data: {
+                        requiresOnboarding: true,
+                        onboardingUrl,
+                    },
+                };
+            }
+        } catch (err: any) {
+            throw new ApiError(
+                HttpStatus.BAD_GATEWAY,
+                `Stripe Connect error: ${err.message || "Failed to verify Stripe account"}`,
             );
         }
 
@@ -249,12 +332,191 @@ export class WorkerService {
             metadata: {
                 amount: payload.amount,
                 workerId: workerProfile.workerId,
+                stripeAccountId: workerProfile.stripeAccountId,
             },
         });
 
         return {
-            message: "Withdrawal request submitted successfully",
-            data: { id: withdraw.id },
+            message:
+                "Withdrawal request submitted successfully. Pending administrator review.",
+            data: {
+                requiresOnboarding: false,
+                id: withdraw.id,
+            },
+        };
+    }
+
+    async getStripeConnectStatus(workerIdentifier: string, user: UserPayload) {
+        const workerProfile = await this.prisma.workerProfile.findFirst({
+            where: {
+                OR: [{ id: workerIdentifier }, { workerId: workerIdentifier }],
+            },
+        });
+
+        if (!workerProfile) {
+            throw new ApiError(HttpStatus.NOT_FOUND, "Worker profile not found");
+        }
+
+        if (user.role === UserRole.WORKER && workerProfile.workerId !== user.id) {
+            throw new ApiError(HttpStatus.FORBIDDEN, "Access denied");
+        }
+
+        if (!workerProfile.stripeAccountId) {
+            return {
+                message: "Stripe status retrieved",
+                data: {
+                    isConnected: false,
+                    detailsSubmitted: false,
+                    payoutsEnabled: false,
+                    stripeAccountId: null,
+                },
+            };
+        }
+
+        try {
+            const status = await this.stripeService.getAccountStatus(
+                workerProfile.stripeAccountId,
+            );
+            return {
+                message: "Stripe status retrieved",
+                data: {
+                    isConnected: true,
+                    detailsSubmitted: status.detailsSubmitted,
+                    payoutsEnabled: status.payoutsEnabled,
+                    stripeAccountId: workerProfile.stripeAccountId,
+                },
+            };
+        } catch (err: any) {
+            return {
+                message: "Stripe status check failed",
+                data: {
+                    isConnected: false,
+                    detailsSubmitted: false,
+                    payoutsEnabled: false,
+                    stripeAccountId: workerProfile.stripeAccountId,
+                    error: err.message,
+                },
+            };
+        }
+    }
+
+    async getStripeOnboardingLink(workerIdentifier: string, user: UserPayload) {
+        const workerProfile = await this.prisma.workerProfile.findFirst({
+            where: {
+                OR: [{ id: workerIdentifier }, { workerId: workerIdentifier }],
+            },
+            include: { worker: true },
+        });
+
+        if (!workerProfile) {
+            throw new ApiError(HttpStatus.NOT_FOUND, "Worker profile not found");
+        }
+
+        if (user.role === UserRole.WORKER && workerProfile.workerId !== user.id) {
+            throw new ApiError(HttpStatus.FORBIDDEN, "Access denied");
+        }
+
+        const frontendUrl = config.url.frontend || "http://localhost:3000";
+        const refreshUrl = `${frontendUrl}/worker/earnings?stripe=refresh`;
+        const returnUrl = `${frontendUrl}/worker/earnings?stripe=return`;
+
+        let accountId = workerProfile.stripeAccountId;
+        if (!accountId) {
+            try {
+                const account = await this.stripeService.createConnectAccount(
+                    workerProfile.worker.email,
+                    {
+                        workerId: workerProfile.workerId,
+                        workerProfileId: workerProfile.id,
+                    },
+                );
+                accountId = account.id;
+                await this.prisma.workerProfile.update({
+                    where: { id: workerProfile.id },
+                    data: { stripeAccountId: accountId },
+                });
+            } catch (err: any) {
+                throw new ApiError(
+                    HttpStatus.BAD_GATEWAY,
+                    `Stripe Connect error: ${err.message || "Failed to create Stripe account"}`,
+                );
+            }
+        }
+
+        try {
+            const onboardingUrl = await this.stripeService.createAccountLink(
+                accountId,
+                returnUrl,
+                refreshUrl,
+            );
+
+            return {
+                message: "Onboarding link generated",
+                data: { url: onboardingUrl },
+            };
+        } catch (err: any) {
+            throw new ApiError(
+                HttpStatus.BAD_GATEWAY,
+                `Stripe Connect error: ${err.message || "Failed to generate onboarding link"}`,
+            );
+        }
+    }
+
+    async getAllWithdraws(query: Record<string, any>, user: UserPayload) {
+        const where: Prisma.WithdrawWhereInput = {};
+
+        if (user.role === UserRole.WORKER) {
+            where.workerId = user.id;
+        } else if (user.role === UserRole.SITE_MANAGER) {
+            const managedProjects = await this.prisma.project.findMany({
+                where: { managerId: user.id },
+                select: { id: true },
+            });
+            const projectIds = managedProjects.map((p) => p.id);
+            const workersInProjects = await this.prisma.workerProfile.findMany({
+                where: { projectId: { in: projectIds } },
+                select: { workerId: true },
+            });
+            where.workerId = { in: workersInProjects.map((w) => w.workerId) };
+        }
+
+        if (query.status) {
+            where.status = query.status as TApplyStatus;
+        }
+
+        const withdraws = await this.prisma.withdraw.findMany({
+            where,
+            orderBy: { createdAt: "desc" },
+            include: {
+                worker: {
+                    select: {
+                        id: true,
+                        userName: true,
+                        email: true,
+                        profileImage: true,
+                        workerProfile: {
+                            select: {
+                                id: true,
+                                workerCategory: true,
+                                currentEarnings: true,
+                                stripeAccountId: true,
+                                projectId: true,
+                                project: {
+                                    select: {
+                                        id: true,
+                                        projectName: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        return {
+            message: "All withdrawal requests fetched successfully",
+            data: withdraws,
         };
     }
 
@@ -299,24 +561,34 @@ export class WorkerService {
             );
         }
 
-        const scopedQuery = { ...query, workerId: workerProfile.workerId };
-        const queryBuilder = new QueryBuilder<
-            typeof this.prisma.withdraw,
-            Prisma.$WithdrawPayload
-        >(this.prisma.withdraw, scopedQuery);
+        const where: Prisma.WithdrawWhereInput = {
+            workerId: workerProfile.workerId,
+            ...(query.status ? { status: query.status as TApplyStatus } : {}),
+        };
 
-        const response = await queryBuilder
-            .sort()
-            .filter({ exacts: ["status"] })
-            .paginate()
-            .execute();
+        const page = Math.max(1, Number(query.page) || 1);
+        const limit = Math.max(1, Number(query.limit) || 50);
+        const skip = (page - 1) * limit;
 
-        const pagination = await queryBuilder.countTotal();
+        const [withdraws, total] = await Promise.all([
+            this.prisma.withdraw.findMany({
+                where,
+                orderBy: { createdAt: "desc" },
+                skip,
+                take: limit,
+            }),
+            this.prisma.withdraw.count({ where }),
+        ]);
 
         return {
             message: "Withdrawals fetched successfully",
-            data: response,
-            pagination,
+            data: withdraws,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPage: Math.ceil(total / limit),
+            },
         };
     }
 
@@ -377,6 +649,28 @@ export class WorkerService {
                 );
             }
 
+            if (!workerProfile.stripeAccountId) {
+                throw new ApiError(
+                    HttpStatus.BAD_REQUEST,
+                    "Cannot transfer funds: Worker does not have a connected Stripe account.",
+                );
+            }
+
+            // Execute Stripe Transfer to Worker's Connected Account
+            let transferResult: any = null;
+            try {
+                transferResult =
+                    await this.stripeService.transferMoneyToConnectedWorker(
+                        workerProfile.stripeAccountId,
+                        withdraw.amount,
+                    );
+            } catch (err: any) {
+                throw new ApiError(
+                    HttpStatus.BAD_GATEWAY,
+                    `Stripe transfer failed: ${err.message || "Unable to transfer funds via Stripe"}`,
+                );
+            }
+
             await this.prisma.$transaction(async (tx) => {
                 const updated = await tx.workerProfile.updateMany({
                     where: {
@@ -395,13 +689,20 @@ export class WorkerService {
 
                 await tx.withdraw.update({
                     where: { id: withdrawId },
-                    data: { status: TApplyStatus.Accepted },
+                    data: {
+                        status: TApplyStatus.Accepted,
+                        transferId: transferResult?.id ?? null,
+                        note: payload.note ?? null,
+                    },
                 });
             });
         } else {
             await this.prisma.withdraw.update({
                 where: { id: withdrawId },
-                data: { status: TApplyStatus.Rejected },
+                data: {
+                    status: TApplyStatus.Rejected,
+                    note: payload.note ?? null,
+                },
             });
         }
 
@@ -423,6 +724,7 @@ export class WorkerService {
             data: { id: withdrawId, status: payload.status },
         };
     }
+
 
     // ── Worker Earnings ──────────────────────────────────────────────────────
 
