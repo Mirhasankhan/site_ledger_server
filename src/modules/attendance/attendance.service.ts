@@ -449,13 +449,30 @@ export class AttendanceService {
             }
         }
 
+        let dateScope: Prisma.AttendanceWhereInput | undefined;
+        if (scopedQuery.date) {
+            dateScope = { date: this.normalizeDate(scopedQuery.date) };
+            delete scopedQuery.date;
+        } else if (scopedQuery.fromDate || scopedQuery.toDate) {
+            const dateFilter: Prisma.DateTimeFilter = {};
+            if (scopedQuery.fromDate) {
+                dateFilter.gte = this.normalizeDate(scopedQuery.fromDate);
+            }
+            if (scopedQuery.toDate) {
+                dateFilter.lte = this.normalizeDate(scopedQuery.toDate);
+            }
+            dateScope = { date: dateFilter };
+            delete scopedQuery.fromDate;
+            delete scopedQuery.toDate;
+        }
+
         const queryBuilder = new QueryBuilder<
             typeof this.prisma.attendance,
             Prisma.$AttendancePayload
         >(this.prisma.attendance, scopedQuery);
 
         const response = await queryBuilder
-            .rawFilter(projectScope ?? {})
+            .rawFilter({ ...(projectScope ?? {}), ...(dateScope ?? {}) })
             .sort()
             .filter({ exacts: ["projectId", "workerId", "status", "source"] })
             .paginate()

@@ -137,13 +137,28 @@ export class DailyReportService {
             scopedQuery.projectId = workerProfile.projectId;
         }
 
+        let dateScope: Prisma.DailyReportWhereInput | undefined;
+        if (scopedQuery.date) {
+            const d = new Date(scopedQuery.date);
+            dateScope = {
+                date: new Date(
+                    Date.UTC(
+                        d.getUTCFullYear(),
+                        d.getUTCMonth(),
+                        d.getUTCDate(),
+                    ),
+                ),
+            };
+            delete scopedQuery.date;
+        }
+
         const queryBuilder = new QueryBuilder<
             typeof this.prisma.dailyReport,
             Prisma.$DailyReportPayload
         >(this.prisma.dailyReport, scopedQuery);
 
         const response = await queryBuilder
-            .rawFilter(projectScope ?? {})
+            .rawFilter({ ...(projectScope ?? {}), ...(dateScope ?? {}) })
             .search([
                 "workCompleted",
                 "workInProgress",
