@@ -54,6 +54,42 @@ export class WorkerController {
         });
     }
 
+    @Get("earnings")
+    @Roles(UserRole.WORKER)
+    @ApiOperation({ summary: "Get currently logged-in worker's live earnings" })
+    async getMyEarnings(
+        @Query("from") from?: string,
+        @Query("to") to?: string,
+        @Req() req?: Request,
+    ) {
+        const user = req?.user as UserPayload;
+        const result = await this.workerService.getWorkerEarnings(
+            user.id,
+            { from, to },
+            user,
+        );
+
+        return ResponseService.formatResponse({
+            statusCode: HttpStatus.OK,
+            message: result.message,
+            data: result.data,
+        });
+    }
+
+    @Get("me")
+    @Roles(UserRole.WORKER)
+    @ApiOperation({ summary: "Get current worker's own profile" })
+    async getMyProfile(@Req() req: Request) {
+        const user = req.user as UserPayload;
+        const result = await this.workerService.fetchSingleWorker(user.id, user);
+
+        return ResponseService.formatResponse({
+            statusCode: HttpStatus.OK,
+            message: result.message,
+            data: result.data,
+        });
+    }
+
     @Get(":id")
     @Roles(UserRole.ADMIN, UserRole.SITE_MANAGER, UserRole.WORKER)
     @ApiOperation({ summary: "Fetch worker profile (scoped per Rule #1)" })

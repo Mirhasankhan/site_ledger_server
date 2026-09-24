@@ -8,12 +8,12 @@ import * as express from "express";
 import config from "./config";
 
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
-import { getLocalIP } from "./common/utils/localIp";
+
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
         logger: new ConsoleLogger({
-            prefix: "nestjs_starter_pack",
+            prefix: "siteledger-server",
             logLevels: ["error", "warn", "fatal"],
             timestamp: true,
             json: true,
@@ -28,7 +28,7 @@ async function bootstrap() {
 
     // --- CORS ---
     app.enableCors({
-        origin: ["http://localhost:3000"], // Set specific origins in prod
+        origin: ["http://localhost:3000", "https://siteledger-frontend-iota.vercel.app"],
         credentials: true,
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allowedHeaders: [
@@ -83,20 +83,27 @@ async function bootstrap() {
 
         const document = SwaggerModule.createDocument(app, swaggerConfig);
         document.security = [{ accessToken: [] }];
-        SwaggerModule.setup("api/v1", app, document);
+        SwaggerModule.setup("docs", app, document);
     }
 
-    // --- Server Listen ---
-    const port = config.port || 5000;
-    await app.listen(port);
-
-    console.log(`\n🚀 Application is running on:`);
-    console.log(`📡 Local:    http://localhost:${port}`);
-    console.log(`🌐 Network:  http://${getLocalIP()}:${port}`);
-    if (config.env !== "production")
-        console.log(`📚 Swagger:  http://localhost:${port}/api/v1`);
+    if (process.env.VERCEL !== "1") {
+        const port = config.port || 5000;
+        await app.listen(port);
+        console.log(`\n🚀 Application is running on http://localhost:${port}`);
+    } else {
+        await app.init();
+    }
 
     return app;
 }
 
-bootstrap();
+export default async function handler(req: Request, res: Response) {
+    const app = await bootstrap();
+    const expressApp = app.getHttpAdapter().getInstance();
+
+    expressApp(req, res);
+}
+
+if (process.env.VERCEL !== "1") {
+    bootstrap();
+}

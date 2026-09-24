@@ -61,7 +61,7 @@ export class ExpenseController {
     }
 
     @Get()
-    @Roles(UserRole.ADMIN, UserRole.SITE_MANAGER, UserRole.WORKER)
+    @Roles(UserRole.ADMIN, UserRole.SITE_MANAGER)
     @ApiOperation({ summary: "List project expenses (scoped per Rule #1)" })
     async fetchAllExpenses(@Req() req: Request) {
         const query = req.query;
@@ -77,7 +77,7 @@ export class ExpenseController {
     }
 
     @Get(":id")
-    @Roles(UserRole.ADMIN, UserRole.SITE_MANAGER, UserRole.WORKER)
+    @Roles(UserRole.ADMIN, UserRole.SITE_MANAGER)
     @ApiOperation({ summary: "Get single expense details" })
     async fetchSingleExpense(@Param("id") id: string, @Req() req: Request) {
         const user = req.user as UserPayload;

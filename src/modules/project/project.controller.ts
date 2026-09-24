@@ -86,6 +86,26 @@ export class ProjectController {
         });
     }
 
+    @Get("activity/global")
+    @Roles(UserRole.ADMIN)
+    @ApiOperation({
+        summary: "Paginated global activity log (Admin only)",
+    })
+    async fetchGlobalActivity(@Req() req: Request) {
+        const user = req.user as UserPayload;
+        const result = await this.projectService.fetchGlobalActivity(
+            req.query,
+            user,
+        );
+
+        return ResponseService.formatResponse({
+            statusCode: HttpStatus.OK,
+            message: result.message,
+            data: result.data,
+            pagination: result.pagination,
+        });
+    }
+
     @Get(":id")
     @Roles(UserRole.ADMIN, UserRole.SITE_MANAGER, UserRole.WORKER)
     @ApiOperation({ summary: "Get single project details (scoped by access)" })
@@ -146,7 +166,7 @@ export class ProjectController {
     }
 
     @Get(":id/budget-summary")
-    @Roles(UserRole.ADMIN, UserRole.SITE_MANAGER, UserRole.WORKER)
+    @Roles(UserRole.ADMIN, UserRole.SITE_MANAGER)
     @ApiOperation({
         summary: "Get project budget summary (budget, spent, remaining)",
     })

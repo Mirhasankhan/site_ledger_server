@@ -5,12 +5,14 @@ import { UserPayload } from "@/common/guards/auth.guard";
 import { ApiError } from "@/common/errors/api_error";
 import { UserRole } from "@prisma/client";
 import { ActivityLoggerService } from "@/core/services/activity/activity_logger.service";
+import { safeWorkerProfileWhere, WorkerService } from "./worker.service";
 
 @Injectable()
 export class WorkerAssignmentService {
     constructor(
         private prisma: PrismaService,
         private activityLogger: ActivityLoggerService,
+        private workerService: WorkerService,
     ) {}
 
     async assignWorker(
@@ -19,9 +21,7 @@ export class WorkerAssignmentService {
         user: UserPayload,
     ) {
         const workerProfile = await this.prisma.workerProfile.findFirst({
-            where: {
-                OR: [{ id: workerIdentifier }, { workerId: workerIdentifier }],
-            },
+            where: safeWorkerProfileWhere(workerIdentifier),
             include: {
                 worker: true,
                 project: true,
@@ -35,10 +35,15 @@ export class WorkerAssignmentService {
         // CRITICAL BUSINESS RULE #2:
         // A Site Manager CANNOT add a new worker to a project, or remove an existing worker
         // from it, while that worker's WorkerProfile.outstandingAmount > 0.
-        // Throw ForbiddenException with a clear message.
-        if (workerProfile.outstandingAmount > 0) {
+        const financials = await this.workerService.syncWorkerFinancials(
+            workerProfile.id,
+        );
+        const outstanding =
+            financials?.outstandingAmount ?? workerProfile.outstandingAmount;
+
+        if (outstanding > 0) {
             throw new ForbiddenException(
-                `Cannot assign worker ${workerProfile.worker.userName} to a project because they have an outstanding balance of ${workerProfile.outstandingAmount}. Clear all outstanding payments before reassigning.`,
+                `Cannot assign worker ${workerProfile.worker.userName} to a project because they have an outstanding balance of $${outstanding}. Clear all outstanding payments before reassigning.`,
             );
         }
 
@@ -129,9 +134,7 @@ export class WorkerAssignmentService {
 
     async unassignWorker(workerIdentifier: string, user: UserPayload) {
         const workerProfile = await this.prisma.workerProfile.findFirst({
-            where: {
-                OR: [{ id: workerIdentifier }, { workerId: workerIdentifier }],
-            },
+            where: safeWorkerProfileWhere(workerIdentifier),
             include: {
                 worker: true,
                 project: true,
@@ -149,13 +152,25 @@ export class WorkerAssignmentService {
             );
         }
 
-        // CRITICAL BUSINESS RULE #2:
-        // A Site Manager CANNOT add a new worker to a project, or remove an existing worker
-        // from it, while that worker's WorkerProfile.outstandingAmount > 0.
-        // Throw ForbiddenException with a clear message.
-        if (workerProfile.outstandingAmount > 0) {
+        // CRITICAL WORKER PAYMENT & REMOVAL RULE:
+        // A worker MUST NOT be removable from a project while they have any unpaid/outstanding earnings
+        // or any withdrawal requests pending review.
+        const financials = await this.workerService.syncWorkerFinancials(
+            workerProfile.id,
+        );
+        const outstanding =
+            financials?.outstandingAmount ?? workerProfile.outstandingAmount;
+        const pendingWithdrawals = financials?.pendingWithdrawals ?? 0;
+
+        if (outstanding > 0) {
             throw new ForbiddenException(
-                `Cannot remove worker ${workerProfile.worker.userName} from the project because they have an outstanding balance of ${workerProfile.outstandingAmount}. Clear all outstanding payments before removing.`,
+                `Cannot remove worker ${workerProfile.worker.userName} from project: outstanding unpaid earnings of $${outstanding} must be settled/withdrawn via Stripe first.`,
+            );
+        }
+
+        if (pendingWithdrawals > 0) {
+            throw new ForbiddenException(
+                `Cannot remove worker ${workerProfile.worker.userName} while withdrawal request(s) are pending review. Complete or reject pending withdrawals first.`,
             );
         }
 

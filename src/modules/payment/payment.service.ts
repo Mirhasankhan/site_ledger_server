@@ -14,86 +14,14 @@ export class PaymentService {
         private activityLogger: ActivityLoggerService,
     ) {}
 
-    async createPayment(payload: CreatePaymentDto, user: UserPayload) {
-        // Verify project exists and scoping
-        const project = await this.prisma.project.findUnique({
-            where: { id: payload.projectId },
-        });
-        if (!project) {
-            throw new ApiError(HttpStatus.NOT_FOUND, "Project not found");
-        }
-
-        if (
-            user.role === UserRole.SITE_MANAGER &&
-            project.managerId !== user.id
-        ) {
-            throw new ApiError(
-                HttpStatus.FORBIDDEN,
-                "You can only record payments for projects you manage",
-            );
-        }
-
-        // Verify worker is assigned to this project
-        const workerProfile = await this.prisma.workerProfile.findUnique({
-            where: { workerId: payload.workerId },
-        });
-
-        if (!workerProfile || workerProfile.projectId !== payload.projectId) {
-            throw new ApiError(
-                HttpStatus.BAD_REQUEST,
-                "Worker is not assigned to this project",
-            );
-        }
-
-        // Rule #5: settle the payment and audit it atomically.
-        const payment = await this.prisma.$transaction(async (tx) => {
-            const newOutstanding = Math.max(
-                0,
-                workerProfile.outstandingAmount - payload.amount,
-            );
-
-            await tx.workerProfile.update({
-                where: { id: workerProfile.id },
-                data: {
-                    outstandingAmount: newOutstanding,
-                    allTimeEarnings: { increment: payload.amount },
-                    currentEarnings: { increment: payload.amount },
-                },
-            });
-
-            const created = await tx.payment.create({
-                data: {
-                    workerId: payload.workerId,
-                    projectId: payload.projectId,
-                    amount: payload.amount,
-                    method: payload.method ?? PaymentMethod.Bank_Transfer,
-                    reference: payload.reference ?? null,
-                    note: payload.note ?? null,
-                    recordedById: user.id,
-                },
-            });
-
-            await this.activityLogger.log({
-                tx,
-                projectId: payload.projectId,
-                actorId: user.id,
-                action: "PAYMENT_RECORDED",
-                entityType: "Payment",
-                entityId: created.id,
-                metadata: {
-                    workerId: payload.workerId,
-                    amount: payload.amount,
-                    method: payload.method,
-                },
-            });
-
-            return created;
-        });
-
-        return {
-            message: "Payment recorded successfully",
-            data: { id: payment.id },
-        };
+    async createPayment(
+        payload: CreatePaymentDto,
+        user: UserPayload,
+    ): Promise<{ message: string; data: any }> {
+        throw new ApiError(
+            HttpStatus.BAD_REQUEST,
+            "Direct offline worker payments are disabled. Workers must receive payouts exclusively by withdrawing their earned balance through Stripe Connect.",
+        );
     }
 
     async fetchAllPayments(query: Record<string, any>, user: UserPayload) {

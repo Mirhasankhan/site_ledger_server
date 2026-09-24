@@ -1,6 +1,7 @@
 import {
     CanActivate,
     ExecutionContext,
+    ForbiddenException,
     Injectable,
     UnauthorizedException,
 } from "@nestjs/common";
@@ -42,47 +43,50 @@ export class AuthGuard implements CanActivate {
         if (!token) {
             throw new UnauthorizedException("Invalid Token");
         }
+
+        let payload: any;
         try {
-            const payload = await this.jwtService.verifyAsync(token, {
+            payload = await this.jwtService.verifyAsync(token, {
                 secret: config.jwt.jwt_secret,
             });
-
-            const user = await this.prisma.user.findUnique({
-                where: {
-                    id: payload.id,
-                },
-                select: {
-                    id: true,
-                    email: true,
-                    role: true,
-                    status: true,
-                },
-            });
-
-            if (!user || user.status === UserStatus.DELETED) {
-                throw new UnauthorizedException("Unauthorized Request");
-            }
-
-            if (user.status === UserStatus.BLOCKED) {
-                throw new UnauthorizedException("User is blocked");
-            }
-
-            if (user.status !== UserStatus.ACTIVE) {
-                throw new UnauthorizedException("User is inactive");
-            }
-
-            if (requiredRoles && !requiredRoles.includes(user.role)) {
-                throw new UnauthorizedException("Insufficient permissions");
-            }
-
-            request["user"] = {
-                id: user.id,
-                email: user.email,
-                role: user.role,
-            };
         } catch {
             throw new UnauthorizedException("Invalid token");
         }
+
+        const user = await this.prisma.user.findUnique({
+            where: {
+                id: payload.id,
+            },
+            select: {
+                id: true,
+                email: true,
+                role: true,
+                status: true,
+            },
+        });
+
+        if (!user || user.status === UserStatus.DELETED) {
+            throw new UnauthorizedException("Unauthorized Request");
+        }
+
+        if (user.status === UserStatus.BLOCKED) {
+            throw new UnauthorizedException("User is blocked");
+        }
+
+        if (user.status !== UserStatus.ACTIVE) {
+            throw new UnauthorizedException("User is inactive");
+        }
+
+        if (requiredRoles && !requiredRoles.includes(user.role)) {
+            throw new ForbiddenException("Insufficient permissions");
+        }
+
+        request["user"] = {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+        };
+
         return true;
     }
 

@@ -16,12 +16,14 @@ import {
 } from "@prisma/client";
 import QueryBuilder from "@/common/utils/queryBuilder";
 import { ActivityLoggerService } from "@/core/services/activity/activity_logger.service";
+import { safeWorkerProfileWhere, WorkerService } from "../worker/worker.service";
 
 @Injectable()
 export class AttendanceService {
     constructor(
         private prisma: PrismaService,
         private activityLogger: ActivityLoggerService,
+        private workerService: WorkerService,
     ) {}
 
     private normalizeDate(dateStr?: string | Date): Date {
@@ -33,7 +35,7 @@ export class AttendanceService {
 
     private async resolveWorkerProfile(identifier: string) {
         return this.prisma.workerProfile.findFirst({
-            where: { OR: [{ id: identifier }, { workerId: identifier }] },
+            where: safeWorkerProfileWhere(identifier),
             include: { worker: true },
         });
     }
@@ -85,6 +87,27 @@ export class AttendanceService {
 
         const normalizedDate = this.normalizeDate(payload.date);
 
+        // Check if an approved leave already exists for this date
+        const existingAttendance = await this.prisma.attendance.findUnique({
+            where: {
+                workerId_projectId_date: {
+                    workerId: workerProfile.id,
+                    projectId: project.id,
+                    date: normalizedDate,
+                },
+            },
+        });
+
+        if (
+            existingAttendance?.status === AttendanceStatus.Leave &&
+            payload.status !== AttendanceStatus.Leave
+        ) {
+            throw new ApiError(
+                HttpStatus.BAD_REQUEST,
+                "Worker has approved leave on this date. Cancel or update the leave request first.",
+            );
+        }
+
         // Rule #4: one record per (workerId, projectId, date) — use upsert
         const attendance = await this.prisma.attendance.upsert({
             where: {
@@ -126,6 +149,9 @@ export class AttendanceService {
                 verifiedAt: new Date(),
             },
         });
+
+        // Automatically sync worker earnings and balance
+        await this.workerService.syncWorkerFinancials(workerProfile.id);
 
         await this.activityLogger.log({
             projectId: project.id,
@@ -171,6 +197,7 @@ export class AttendanceService {
 
         const normalizedDate = this.normalizeDate(payload.date);
         const results: string[] = [];
+        const updatedWorkerProfileIds = new Set<string>();
 
         await this.prisma.$transaction(async (tx) => {
             for (const item of payload.attendances) {
@@ -199,6 +226,22 @@ export class AttendanceService {
                         HttpStatus.BAD_REQUEST,
                         `Worker ${item.workerId} is not assigned to this project`,
                     );
+                }
+
+                // Prevent approved leave from being overwritten by bulk attendance
+                const existing = await tx.attendance.findUnique({
+                    where: {
+                        workerId_projectId_date: {
+                            workerId: workerProfile.id,
+                            projectId: project.id,
+                            date: normalizedDate,
+                        },
+                    },
+                });
+
+                if (existing?.status === AttendanceStatus.Leave) {
+                    // Preserve approved leave
+                    continue;
                 }
 
                 const record = await tx.attendance.upsert({
@@ -243,6 +286,12 @@ export class AttendanceService {
                 });
 
                 results.push(record.id);
+                updatedWorkerProfileIds.add(workerProfile.id);
+            }
+
+            // Sync financials for all affected workers
+            for (const profileId of updatedWorkerProfileIds) {
+                await this.workerService.syncWorkerFinancials(profileId, tx);
             }
         });
 
@@ -390,6 +439,9 @@ export class AttendanceService {
                 verifiedAt: new Date(),
             },
         });
+
+        // Automatically sync worker earnings and balance
+        await this.workerService.syncWorkerFinancials(attendance.workerId);
 
         await this.activityLogger.log({
             projectId: attendance.projectId,

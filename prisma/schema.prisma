@@ -101,6 +101,7 @@ model Project {
   materialRequests MaterialRequest[]
   materialUsages   MaterialUsage[]
   activityLogs     ActivityLog[]
+  withdraws        Withdraw[]
 
   @@map("projects")
 }
@@ -416,10 +417,12 @@ model Withdraw {
   status     TApplyStatus @default(Pending)
   transferId String?
   note       String?
+  projectId  String?      @db.ObjectId
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
-  worker User @relation(fields: [workerId], references: [id])
+  worker  User     @relation(fields: [workerId], references: [id])
+  project Project? @relation(fields: [projectId], references: [id])
 
   @@map("withdraws")
 }

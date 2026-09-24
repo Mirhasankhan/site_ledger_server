@@ -8,6 +8,7 @@ import {
 import { UserPayload } from "@/common/guards/auth.guard";
 import { ApiError } from "@/common/errors/api_error";
 import {
+    AttendanceSource,
     AttendanceStatus,
     Prisma,
     TApplyStatus,
@@ -17,6 +18,17 @@ import QueryBuilder from "@/common/utils/queryBuilder";
 import { ActivityLoggerService } from "@/core/services/activity/activity_logger.service";
 import { StripeService } from "@/core/services/stripe/stripe.service";
 import config from "@/config";
+
+export function safeWorkerProfileWhere(identifier?: string): Prisma.WorkerProfileWhereInput {
+    if (!identifier || typeof identifier !== "string" || !identifier.trim()) {
+        return { id: "000000000000000000000000" };
+    }
+    const cleanId = identifier.trim();
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(cleanId);
+    return isObjectId
+        ? { OR: [{ id: cleanId }, { workerId: cleanId }] }
+        : { workerId: cleanId };
+}
 
 @Injectable()
 export class WorkerService {
@@ -29,10 +41,36 @@ export class WorkerService {
 
     async fetchAllWorkers(query: Record<string, any>, user: UserPayload) {
         const scopedQuery = { ...query };
+        let siteManagerFilter: Prisma.WorkerProfileWhereInput | undefined;
 
         // Rule #1: Scoping check
         if (user.role === UserRole.WORKER) {
             scopedQuery.workerId = user.id;
+        } else if (user.role === UserRole.SITE_MANAGER) {
+            const managedProjects = await this.prisma.project.findMany({
+                where: { managerId: user.id },
+                select: { id: true },
+            });
+            const managedIds = managedProjects.map((p) => p.id);
+
+            if (
+                scopedQuery.projectId &&
+                !managedIds.includes(scopedQuery.projectId)
+            ) {
+                throw new ApiError(
+                    HttpStatus.FORBIDDEN,
+                    "Access denied to workers in this project",
+                );
+            }
+
+            if (!scopedQuery.projectId) {
+                siteManagerFilter = {
+                    OR: [
+                        { projectId: null },
+                        { projectId: { in: managedIds } },
+                    ],
+                };
+            }
         }
 
         const queryBuilder = new QueryBuilder<
@@ -41,6 +79,7 @@ export class WorkerService {
         >(this.prisma.workerProfile, scopedQuery);
 
         const response = await queryBuilder
+            .rawFilter(siteManagerFilter ?? {})
             .search(["phoneNumber", "presentAddress", "permanentAddress"])
             .sort()
             .filter({ exacts: ["projectId", "workerCategory", "workerId"] })
@@ -66,28 +105,18 @@ export class WorkerService {
             })
             .execute();
 
-        let filteredResponse = response;
-        if (user.role === UserRole.SITE_MANAGER) {
-            // Site Manager can only view workers in their projects or unassigned workers
-            filteredResponse = (response as any[]).filter(
-                (w) => !w.projectId || w.project?.managerId === user.id,
-            );
-        }
-
         const pagination = await queryBuilder.countTotal();
 
         return {
             message: "Workers fetched successfully",
-            data: filteredResponse,
+            data: response,
             pagination,
         };
     }
 
     async fetchSingleWorker(workerIdentifier: string, user: UserPayload) {
         const worker = await this.prisma.workerProfile.findFirst({
-            where: {
-                OR: [{ id: workerIdentifier }, { workerId: workerIdentifier }],
-            },
+            where: safeWorkerProfileWhere(workerIdentifier),
             include: {
                 worker: {
                     select: {
@@ -144,9 +173,7 @@ export class WorkerService {
         user: UserPayload,
     ) {
         const worker = await this.prisma.workerProfile.findFirst({
-            where: {
-                OR: [{ id: workerIdentifier }, { workerId: workerIdentifier }],
-            },
+            where: safeWorkerProfileWhere(workerIdentifier),
             include: {
                 project: true,
             },
@@ -201,6 +228,131 @@ export class WorkerService {
         };
     }
 
+    // ── Financial Sync Method ────────────────────────────────────────────────
+    async syncWorkerFinancials(
+        workerProfileId: string,
+        tx?: Prisma.TransactionClient,
+    ) {
+        const client = tx || this.prisma;
+
+        const profile = await client.workerProfile.findFirst({
+            where: safeWorkerProfileWhere(workerProfileId),
+            include: {
+                project: true,
+            },
+        });
+
+        if (!profile) return null;
+
+        // Fetch verified shifts: Present or Half_Day, verified or manager-marked
+        const attendances = await client.attendance.findMany({
+            where: {
+                workerId: profile.id,
+                status: {
+                    in: [AttendanceStatus.Present, AttendanceStatus.Half_Day],
+                },
+                OR: [
+                    { verifiedAt: { not: null } },
+                    { source: AttendanceSource.Manager },
+                ],
+            },
+            include: {
+                project: {
+                    include: {
+                        workerRates: {
+                            where: {
+                                category: profile.workerCategory,
+                                isActive: true,
+                            },
+                            orderBy: { effectiveFrom: "desc" },
+                        },
+                    },
+                },
+            },
+        });
+
+        // Fetch all withdraws for this worker
+        const withdraws = await client.withdraw.findMany({
+            where: { workerId: profile.workerId },
+        });
+
+        const acceptedWithdrawals = withdraws
+            .filter((w) => w.status === TApplyStatus.Accepted)
+            .reduce((sum, w) => sum + w.amount, 0);
+
+        const pendingWithdrawals = withdraws
+            .filter((w) => w.status === TApplyStatus.Pending)
+            .reduce((sum, w) => sum + w.amount, 0);
+
+        let allTimeGross = 0;
+        let currentProjectGross = 0;
+
+        for (const att of attendances) {
+            const dailyRate =
+                profile.dailyRate ||
+                att.project?.workerRates?.[0]?.dailyRate ||
+                0;
+            const overtimeRate =
+                att.project?.workerRates?.[0]?.overtimeRate || 0;
+
+            const base =
+                att.status === AttendanceStatus.Half_Day
+                    ? Math.floor(dailyRate / 2)
+                    : dailyRate;
+            const overtime = Math.floor(
+                (att.overtimeHours || 0) * overtimeRate,
+            );
+            const total = base + overtime;
+
+            allTimeGross += total;
+            if (profile.projectId && att.projectId === profile.projectId) {
+                currentProjectGross += total;
+            }
+        }
+
+        // Available balance: total gross minus all settled and pending withdrawals
+        const currentEarnings = Math.max(
+            0,
+            allTimeGross - acceptedWithdrawals - pendingWithdrawals,
+        );
+
+        // Project settled withdrawals
+        const projectAcceptedWithdrawals = withdraws
+            .filter(
+                (w) =>
+                    w.status === TApplyStatus.Accepted &&
+                    (!w.projectId ||
+                        (profile.projectId &&
+                            w.projectId === profile.projectId)),
+            )
+            .reduce((sum, w) => sum + w.amount, 0);
+
+        // Outstanding unpaid earnings on current project
+        const outstandingAmount = Math.max(
+            0,
+            currentProjectGross - projectAcceptedWithdrawals,
+        );
+
+        const updated = await client.workerProfile.update({
+            where: { id: profile.id },
+            data: {
+                allTimeEarnings: allTimeGross,
+                currentEarnings,
+                outstandingAmount,
+            },
+        });
+
+        return {
+            workerProfile: updated,
+            allTimeGross,
+            currentEarnings,
+            acceptedWithdrawals,
+            pendingWithdrawals,
+            outstandingAmount,
+            currentProjectGross,
+        };
+    }
+
     // ── Withdraw Methods ─────────────────────────────────────────────────────
 
     async createWithdraw(
@@ -209,9 +361,7 @@ export class WorkerService {
         user: UserPayload,
     ) {
         const workerProfile = await this.prisma.workerProfile.findFirst({
-            where: {
-                OR: [{ id: workerIdentifier }, { workerId: workerIdentifier }],
-            },
+            where: safeWorkerProfileWhere(workerIdentifier),
             include: { worker: true },
         });
 
@@ -237,10 +387,15 @@ export class WorkerService {
             );
         }
 
-        if (payload.amount > workerProfile.currentEarnings) {
+        // Synchronize financials first to guarantee live balance
+        const financials = await this.syncWorkerFinancials(workerProfile.id);
+        const available =
+            financials?.currentEarnings ?? workerProfile.currentEarnings;
+
+        if (payload.amount > available) {
             throw new ApiError(
                 HttpStatus.BAD_REQUEST,
-                `Withdrawal amount exceeds current earnings (${workerProfile.currentEarnings})`,
+                `Withdrawal amount ($${payload.amount}) exceeds available earnings ($${available})`,
             );
         }
 
@@ -320,8 +475,12 @@ export class WorkerService {
                 workerId: workerProfile.workerId,
                 amount: payload.amount,
                 status: TApplyStatus.Pending,
+                projectId: workerProfile.projectId ?? null,
             },
         });
+
+        // Immediately sync financials so pending withdrawal reserves the balance
+        await this.syncWorkerFinancials(workerProfile.id);
 
         await this.activityLogger.log({
             projectId: workerProfile.projectId ?? null,
@@ -348,9 +507,7 @@ export class WorkerService {
 
     async getStripeConnectStatus(workerIdentifier: string, user: UserPayload) {
         const workerProfile = await this.prisma.workerProfile.findFirst({
-            where: {
-                OR: [{ id: workerIdentifier }, { workerId: workerIdentifier }],
-            },
+            where: safeWorkerProfileWhere(workerIdentifier),
         });
 
         if (!workerProfile) {
@@ -402,9 +559,7 @@ export class WorkerService {
 
     async getStripeOnboardingLink(workerIdentifier: string, user: UserPayload) {
         const workerProfile = await this.prisma.workerProfile.findFirst({
-            where: {
-                OR: [{ id: workerIdentifier }, { workerId: workerIdentifier }],
-            },
+            where: safeWorkerProfileWhere(workerIdentifier),
             include: { worker: true },
         });
 
@@ -526,9 +681,7 @@ export class WorkerService {
         user: UserPayload,
     ) {
         const workerProfile = await this.prisma.workerProfile.findFirst({
-            where: {
-                OR: [{ id: workerIdentifier }, { workerId: workerIdentifier }],
-            },
+            where: safeWorkerProfileWhere(workerIdentifier),
             include: { project: true },
         });
 
@@ -599,9 +752,7 @@ export class WorkerService {
         user: UserPayload,
     ) {
         const workerProfile = await this.prisma.workerProfile.findFirst({
-            where: {
-                OR: [{ id: workerIdentifier }, { workerId: workerIdentifier }],
-            },
+            where: safeWorkerProfileWhere(workerIdentifier),
             include: { project: true },
         });
 
@@ -642,10 +793,18 @@ export class WorkerService {
         }
 
         if (payload.status === TApplyStatus.Accepted) {
-            if (withdraw.amount > workerProfile.currentEarnings) {
+            const financials = await this.syncWorkerFinancials(workerProfile.id);
+            const totalGross = financials?.allTimeGross ?? 0;
+            const alreadyAccepted = financials?.acceptedWithdrawals ?? 0;
+            const availableForSettlement = Math.max(
+                0,
+                totalGross - alreadyAccepted,
+            );
+
+            if (withdraw.amount > availableForSettlement) {
                 throw new ApiError(
                     HttpStatus.BAD_REQUEST,
-                    `Cannot accept: withdrawal amount (${withdraw.amount}) exceeds current earnings (${workerProfile.currentEarnings})`,
+                    `Cannot accept: withdrawal amount ($${withdraw.amount}) exceeds unwithdrawn earnings ($${availableForSettlement})`,
                 );
             }
 
@@ -671,31 +830,16 @@ export class WorkerService {
                 );
             }
 
-            await this.prisma.$transaction(async (tx) => {
-                const updated = await tx.workerProfile.updateMany({
-                    where: {
-                        id: workerProfile.id,
-                        currentEarnings: { gte: withdraw.amount },
-                    },
-                    data: { currentEarnings: { decrement: withdraw.amount } },
-                });
-
-                if (updated.count !== 1) {
-                    throw new ApiError(
-                        HttpStatus.BAD_REQUEST,
-                        "Cannot accept: withdrawal exceeds current earnings",
-                    );
-                }
-
-                await tx.withdraw.update({
-                    where: { id: withdrawId },
-                    data: {
-                        status: TApplyStatus.Accepted,
-                        transferId: transferResult?.id ?? null,
-                        note: payload.note ?? null,
-                    },
-                });
+            await this.prisma.withdraw.update({
+                where: { id: withdrawId },
+                data: {
+                    status: TApplyStatus.Accepted,
+                    transferId: transferResult?.id ?? null,
+                    note: payload.note ?? null,
+                },
             });
+
+            await this.syncWorkerFinancials(workerProfile.id);
         } else {
             await this.prisma.withdraw.update({
                 where: { id: withdrawId },
@@ -704,6 +848,8 @@ export class WorkerService {
                     note: payload.note ?? null,
                 },
             });
+
+            await this.syncWorkerFinancials(workerProfile.id);
         }
 
         await this.activityLogger.log({
@@ -734,9 +880,7 @@ export class WorkerService {
         user: UserPayload,
     ) {
         const workerProfile = await this.prisma.workerProfile.findFirst({
-            where: {
-                OR: [{ id: workerIdentifier }, { workerId: workerIdentifier }],
-            },
+            where: safeWorkerProfileWhere(workerIdentifier),
             include: { project: true },
         });
 
@@ -769,6 +913,8 @@ export class WorkerService {
             );
         }
 
+        const financials = await this.syncWorkerFinancials(workerProfile.id);
+
         const fromDate = query.from ? new Date(query.from) : undefined;
         const toDate = query.to ? new Date(query.to) : undefined;
 
@@ -786,6 +932,10 @@ export class WorkerService {
                             AttendanceStatus.Half_Day,
                         ],
                     },
+                    OR: [
+                        { verifiedAt: { not: null } },
+                        { source: AttendanceSource.Manager },
+                    ],
                     ...(fromDate || toDate
                         ? {
                               date: {
@@ -796,6 +946,15 @@ export class WorkerService {
                         : {}),
                 },
                 orderBy: { date: "asc" },
+                include: {
+                    project: {
+                        select: {
+                            id: true,
+                            projectName: true,
+                            projectCode: true,
+                        },
+                    },
+                },
             }),
             workerProfile.projectId
                 ? this.prisma.projectWorkerRate.findFirst({
@@ -812,17 +971,21 @@ export class WorkerService {
         const dailyRate = workerProfile.dailyRate;
         const overtimeRate = activeRate?.overtimeRate ?? 0;
 
-        let grossEarnings = 0;
+        let periodGross = 0;
         const breakdown = attendances.map((a) => {
             const base =
                 a.status === AttendanceStatus.Half_Day
-                    ? dailyRate / 2
+                    ? Math.floor(dailyRate / 2)
                     : dailyRate;
-            const overtimePay = (a.overtimeHours ?? 0) * overtimeRate;
+            const overtimePay = Math.floor(
+                (a.overtimeHours ?? 0) * overtimeRate,
+            );
             const dayTotal = base + overtimePay;
-            grossEarnings += dayTotal;
+            periodGross += dayTotal;
             return {
+                id: a.id,
                 date: a.date,
+                projectName: a.project?.projectName,
                 status: a.status,
                 base,
                 overtimeHours: a.overtimeHours,
@@ -830,27 +993,6 @@ export class WorkerService {
                 total: dayTotal,
             };
         });
-
-        const paymentsResult = await this.prisma.payment.aggregate({
-            _sum: { amount: true },
-            where: {
-                workerId: workerProfile.workerId,
-                ...(workerProfile.projectId
-                    ? { projectId: workerProfile.projectId }
-                    : {}),
-                ...(fromDate || toDate
-                    ? {
-                          createdAt: {
-                              ...(fromDate ? { gte: fromDate } : {}),
-                              ...(toDate ? { lte: toDate } : {}),
-                          },
-                      }
-                    : {}),
-            },
-        });
-
-        const totalPayments = paymentsResult._sum.amount ?? 0;
-        const outstanding = Math.max(0, grossEarnings - totalPayments);
 
         return {
             message: "Worker earnings computed successfully",
@@ -860,13 +1002,15 @@ export class WorkerService {
                 projectId: workerProfile.projectId,
                 dailyRate,
                 overtimeRate,
-                grossEarnings,
-                payments: totalPayments,
-                totalPayments,
-                outstanding,
-                currentEarnings: workerProfile.currentEarnings,
-                outstandingAmount: workerProfile.outstandingAmount,
-                allTimeEarnings: workerProfile.allTimeEarnings,
+                grossEarnings: financials?.allTimeGross ?? 0,
+                periodGross,
+                totalWithdrawn: financials?.acceptedWithdrawals ?? 0,
+                pendingWithdrawals: financials?.pendingWithdrawals ?? 0,
+                availableBalance: financials?.currentEarnings ?? 0,
+                currentEarnings: financials?.currentEarnings ?? 0,
+                outstanding: financials?.outstandingAmount ?? 0,
+                outstandingAmount: financials?.outstandingAmount ?? 0,
+                allTimeEarnings: financials?.allTimeGross ?? 0,
                 period: { from: fromDate ?? null, to: toDate ?? null },
                 breakdown,
             },
