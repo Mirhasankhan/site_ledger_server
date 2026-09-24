@@ -14,7 +14,7 @@ export class ProjectService {
         private prisma: PrismaService,
         private activityLogger: ActivityLoggerService,
         private fileService: FileService,
-    ) {}
+    ) { }
 
     async createProject(
         payload: CreateProjectDto,
@@ -66,14 +66,6 @@ export class ProjectService {
 
         if (file) {
             projectImageUrl = await this.fileService.uploadToCloudinary(file);
-        } else if (
-            payload.projectImage &&
-            !payload.projectImage.startsWith("http://") &&
-            !payload.projectImage.startsWith("https://")
-        ) {
-            projectImageUrl = await this.fileService.uploadToCloudinary(
-                payload.projectImage,
-            );
         }
 
         if (!projectImageUrl) {

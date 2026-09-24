@@ -13,15 +13,18 @@ import {
     generateInviteEmailHtml,
     generateInviteEmailText,
 } from "./invite.template";
+import { background } from "@/common/utils/background";
 
 @Injectable()
 export class InviteService {
     constructor(
         private prisma: PrismaService,
         private activityLogger: ActivityLoggerService,
-    ) {}
+    ) { }
 
     async createInvite(payload: CreateInviteDto, user: UserPayload) {
+console.time("Email sent")
+
         if (payload.role === UserRole.WORKER && !payload.workerCategory) {
             throw new ApiError(
                 HttpStatus.BAD_REQUEST,
@@ -88,8 +91,8 @@ export class InviteService {
             payload.role === UserRole.SITE_MANAGER
                 ? "Site Manager"
                 : payload.role === UserRole.WORKER
-                  ? "Worker"
-                  : "Admin";
+                    ? "Worker"
+                    : "Admin";
 
         const emailHtml = generateInviteEmailHtml({
             email: invite.email,
@@ -105,20 +108,41 @@ export class InviteService {
             inviteLink,
         });
 
-        try {
-            await sendEmail({
-                email: invite.email,
-                subject: `Invitation to join ${companyName} as ${formattedRole}`,
-                html: emailHtml,
-                text: emailText,
-            });
-        } catch (emailError) {
-            console.error("Failed to send invitation email:", emailError);
-            throw new ApiError(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                `Invitation created but failed to send email to ${invite.email}: ${(emailError as Error).message}`,
-            );
-        }
+        // try {
+        //     await sendEmail({
+        //         email: invite.email,
+        //         subject: `Invitation to join ${companyName} as ${formattedRole}`,
+        //         html: emailHtml,
+        //         text: emailText,
+        //     });
+        // } catch (emailError) {
+        //     console.error("Failed to send invitation email:", emailError);
+        //     throw new ApiError(
+        //         HttpStatus.INTERNAL_SERVER_ERROR,
+        //         `Invitation created but failed to send email to ${invite.email}: ${(emailError as Error).message}`,
+        //     );
+        // }
+
+
+        background.add(async () => {
+            try {
+                await sendEmail({
+                    email: invite.email,
+                    subject: `Invitation to join ${companyName} as ${formattedRole}`,
+                    html: emailHtml,
+                    text: emailText,
+                });
+            } catch (emailError) {
+                console.error(
+                    `Failed to send invitation email to ${invite.email}:`,
+                    emailError,
+                );
+            }
+        });
+
+        console.timeEnd("Email sent")
+
+
 
         return {
             message: `Invitation email sent successfully to ${invite.email}`,
