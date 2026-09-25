@@ -11,7 +11,7 @@ export class ProfileService {
     constructor(
         private prisma: PrismaService,
         private fileService: FileService,
-    ) {}
+    ) { }
 
     async getProfile(user: UserPayload) {
         const userProfile = await this.prisma.user.findUnique({
@@ -70,21 +70,6 @@ export class ProfileService {
                 file,
                 "profiles",
             );
-        } else {
-            const rawImage = payload.profileImage || payload.avatar;
-            if (rawImage) {
-                if (
-                    !rawImage.startsWith("http://") &&
-                    !rawImage.startsWith("https://")
-                ) {
-                    profileImageUrl = await this.fileService.uploadToCloudinary(
-                        rawImage,
-                        "profiles",
-                    );
-                } else {
-                    profileImageUrl = rawImage;
-                }
-            }
         }
 
         const updateData: { userName?: string; profileImage?: string } = {};
@@ -133,9 +118,9 @@ export class ProfileService {
             if (currentUser.profileImage.includes("cloudinary.com")) {
                 await this.fileService
                     .deleteFromCloudinary(currentUser.profileImage)
-                    .catch(() => {});
+                    .catch(() => { });
             } else {
-                await deleteFile(currentUser.profileImage).catch(() => {});
+                await deleteFile(currentUser.profileImage).catch(() => { });
             }
         }
 

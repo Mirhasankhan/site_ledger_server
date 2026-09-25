@@ -20,11 +20,9 @@ export class InviteService {
     constructor(
         private prisma: PrismaService,
         private activityLogger: ActivityLoggerService,
-    ) { }
+    ) {}
 
     async createInvite(payload: CreateInviteDto, user: UserPayload) {
-console.time("Email sent")
-
         if (payload.role === UserRole.WORKER && !payload.workerCategory) {
             throw new ApiError(
                 HttpStatus.BAD_REQUEST,
@@ -91,8 +89,8 @@ console.time("Email sent")
             payload.role === UserRole.SITE_MANAGER
                 ? "Site Manager"
                 : payload.role === UserRole.WORKER
-                    ? "Worker"
-                    : "Admin";
+                  ? "Worker"
+                  : "Admin";
 
         const emailHtml = generateInviteEmailHtml({
             email: invite.email,
@@ -123,26 +121,14 @@ console.time("Email sent")
         //     );
         // }
 
-
         background.add(async () => {
-            try {
-                await sendEmail({
-                    email: invite.email,
-                    subject: `Invitation to join ${companyName} as ${formattedRole}`,
-                    html: emailHtml,
-                    text: emailText,
-                });
-            } catch (emailError) {
-                console.error(
-                    `Failed to send invitation email to ${invite.email}:`,
-                    emailError,
-                );
-            }
+            await sendEmail({
+                email: invite.email,
+                subject: `Invitation to join ${companyName} as ${formattedRole}`,
+                html: emailHtml,
+                text: emailText,
+            });
         });
-
-        console.timeEnd("Email sent")
-
-
 
         return {
             message: `Invitation email sent successfully to ${invite.email}`,
@@ -156,7 +142,7 @@ console.time("Email sent")
         };
     }
 
-    async fetchAllInvites(query: Record<string, any>, user: UserPayload) {
+    async fetchAllInvites(query: Record<string, unknown>, user: UserPayload) {
         const queryBuilder = new QueryBuilder<
             typeof this.prisma.invite,
             Prisma.$InvitePayload

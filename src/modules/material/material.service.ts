@@ -52,7 +52,7 @@ export class MaterialService {
     async fetchAllMaterials(query: Record<string, any>, user: UserPayload) {
         const queryBuilder = new QueryBuilder<
             typeof this.prisma.material,
-            Prisma.$MaterialPayload
+            Prisma.$MaterialPayload 
         >(this.prisma.material, query);
 
         const response = await queryBuilder

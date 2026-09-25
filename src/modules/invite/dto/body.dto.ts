@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { TWorkerCategory, UserRole } from "@prisma/client";
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional } from "class-validator";
 
 export class CreateInviteDto {
     @ApiProperty({ example: "worker@example.com", description: "Email to send invitation to" })
